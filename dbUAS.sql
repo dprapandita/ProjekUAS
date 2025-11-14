@@ -19,6 +19,39 @@ CREATE TABLE IF NOT EXISTS petani (
     password VARCHAR(100) NOT NULL
 );
 
--- Insert data admin default sesuai permintaan
-INSERT INTO admin (username, password) VALUES ('ejak', '23')
-ON CONFLICT (username) DO NOTHING;
+-- Insert data admin default
+INSERT INTO admin (username, password) VALUES ('ejak', '23');
+
+CREATE TABLE IF NOT EXISTS lahan (
+    lahan_id SERIAL PRIMARY KEY,
+    petani_id INTEGER REFERENCES petani(petani_id),
+    lokasi VARCHAR(100),
+    ketinggian REAL,
+    ph REAL,
+    tekstur VARCHAR(50),
+    kandungan_nutrisi VARCHAR(100),
+    suhu REAL,
+    curah_hujan REAL,
+    tanggal_input DATE
+);
+
+CREATE TABLE IF NOT EXISTS tanaman (
+    tanaman_id SERIAL PRIMARY KEY,
+    nama VARCHAR(100) NOT NULL,
+    deskripsi TEXT
+);
+
+CREATE TABLE IF NOT EXISTS penanaman (
+    penanaman_id SERIAL PRIMARY KEY,
+    lahan_id INTEGER REFERENCES lahan(lahan_id),
+    tanaman_id INTEGER REFERENCES tanaman(tanaman_id),
+    tanggal_tanam DATE
+);
+
+CREATE TABLE IF NOT EXISTS survey_data (
+    survey_id SERIAL PRIMARY KEY,
+    lahan_id INTEGER REFERENCES lahan(lahan_id),
+    surveyor_id INTEGER REFERENCES surveyor(surveyor_id),
+    hasil_survey TEXT,
+    tanggal_survey DATE
+);
