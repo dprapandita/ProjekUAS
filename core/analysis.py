@@ -43,6 +43,13 @@ def add_lahan(
     return lahan_id
 
 def add_tanaman(conn, nama_tanaman, deskripsi) -> tuple[str, str] | None:
+    """
+    Inputan tanaman
+    :param conn:
+    :param nama_tanaman:
+    :param deskripsi:
+    :return tuple[str, str] | None:
+    """
     cursor = conn.cursor()
     check_query = f"SELECT nama FROM tanaman WHERE nama LIKE '{nama_tanaman}'"
     cursor.execute(check_query)
