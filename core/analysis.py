@@ -34,7 +34,7 @@ def add_lahan(
     tanggal = date.today()
 
     query = (f"INSERT INTO lahan WITH VALUES ({petani_id}, {lokasi}, {ketinggian}, {ph}, {tekstur}, "
-             f"{kandungan_nutrisi}, {suhu}, {curah_hujan}, {tanggal})")
+             f"{kandungan_nutrisi}, {suhu}, {curah_hujan}, {tanggal}) RETURNING *;")
     cursor = conn.cursor()
     cursor.execute(query)
     lahan_id = cursor.fetchone()[0]
@@ -57,7 +57,7 @@ def add_tanaman(conn, nama_tanaman, deskripsi) -> tuple[str, str] | None:
         print(f"nama tanaman {nama_tanaman} sudah ada")
         return None
 
-    query = f"INSERT INTO tanaman WITH VALUES ({nama_tanaman}, {deskripsi})"
+    query = f"INSERT INTO tanaman WITH VALUES ({nama_tanaman}, {deskripsi}) RETURNING *;"
     cursor.execute(query)
     result = cursor.fetchone()
     conn.commit()

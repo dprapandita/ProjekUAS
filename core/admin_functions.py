@@ -1,7 +1,7 @@
 import psycopg2
 
 
-def add_user(conn: psycopg2.extensions.connection, username, password, role) -> tuple[str, str] | None:
+def add_user(conn: psycopg2.extensions.connection, username: str, password: str, role: str) -> tuple[str, str] | None:
     """
     Menambahkan user dari sisi admin
     :param conn:
@@ -20,7 +20,7 @@ def add_user(conn: psycopg2.extensions.connection, username, password, role) -> 
         print("Username sudah ada.")
         return None
 
-    cursor.execute(f"INSERT INTO {role} (username, password) VALUES ('{username}', '{password}')")
+    cursor.execute(f"INSERT INTO {role} (username, password) VALUES ('{username}', '{password}') RETURNING *;")
     new_user = cursor.fetchone()
     conn.commit()
     cursor.close()
