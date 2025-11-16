@@ -1,4 +1,6 @@
 from datetime import date
+from typing import Optional
+
 
 def input_angka(prompt, tipe=float) -> float | int:
     """
@@ -59,6 +61,38 @@ def add_tanaman(conn, nama_tanaman, deskripsi) -> tuple[str, str] | None:
     cursor.close()
     print(f"nama tanaman {nama_tanaman} dengan deskripsi {deskripsi} sudah masuk")
     return result
+
+def add_survey_data(
+    conn,
+    lahan_id: int,
+    surveyor_id: int,
+    hasil_survey: str
+) -> Optional[int]:
+    """
+    Tambah data survey untuk suatu lahan oleh surveyor tertentu.
+    """
+    tanggal = date.today()
+
+    query = """
+        INSERT INTO survey_data (
+            lahan_id,
+            surveyor_id,
+            hasil_survey,
+            tanggal_survey
+        ) VALUES (%s, %s, %s, %s)
+        RETURNING survey_id;
+    """
+
+    cursor = conn.cursor()
+    cursor.execute(
+        query,
+        (lahan_id, surveyor_id, hasil_survey, tanggal)
+    )
+    row = cursor.fetchone()
+    conn.commit()
+    cursor.close()
+
+    return row[0] if row else None
 
 
 def analysis_tanaman_dengan_lahan(conn) -> list[tuple[str, str]]:

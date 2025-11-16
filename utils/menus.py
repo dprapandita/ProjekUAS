@@ -1,5 +1,5 @@
 from core.admin_functions import add_user
-from core.analysis import add_lahan, input_angka, add_tanaman
+from core.analysis import add_lahan, input_angka, add_tanaman, add_survey_data
 from utils.header import header
 
 
@@ -106,6 +106,7 @@ def menu_surveyor(conn, user):
     (di sini surveyor harus pilih petani_id yang terkait,
      bisa dikembangkan lagi nanti dengan daftar petani)
     """
+    surveyor_id = user["id"]
     while True:
         header()
         print(f"\n=== MENU SURVEYOR (Login sebagai: {user['username']}) ===")
@@ -117,6 +118,10 @@ def menu_surveyor(conn, user):
 
         if pilihan == "1":
             print("\n=== Input survey ===")
+            lahan_id = int(input("ID lahan yang disurvey: "))
+            hasil_survey = input("Hasil survey (deskripsi): ")
+            survey_id = add_survey_data(conn, lahan_id, surveyor_id, hasil_survey)
+            print(f"✅ Survey baru dengan ID {survey_id} berhasil ditambahkan untuk lahan {lahan_id}.")
 
         elif pilihan == "2":
             print("\n=== Input tanaman baru ===")
