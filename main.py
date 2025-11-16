@@ -24,6 +24,9 @@ if __name__ == '__main__':
                         menu_petani(conn, user)
                     case "surveyor":
                         menu_surveyor(conn, user)
+                    case Exception as e:
+                        print(f"Ada kesalahan :{e}")
+
 
             elif pilihan == "2":
                 signup(conn)

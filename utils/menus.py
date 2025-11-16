@@ -79,24 +79,16 @@ def menu_petani(conn, user):
 
         elif pilihan == "2":
             print("\n=== Input Data Lahan ===")
-            lokasi = input("Lokasi lahan: ")
             ketinggian = input_angka("Ketinggian (meter): ", float)
-            ph = input_angka("pH tanah: ", float)
+            iklim = str(input("Iklim: "))
             tekstur = input("Tekstur tanah: ")
-            kandungan_nutrisi = input("Kandungan nutrisi: ")
-            suhu = input_angka("Suhu (°C): ", float)
-            curah_hujan = input_angka("Curah hujan (mm): ", float)
 
             lahan_id = add_lahan(
                 conn,
                 petani_id,
-                lokasi,
                 ketinggian,
-                ph,
                 tekstur,
-                kandungan_nutrisi,
-                suhu,
-                curah_hujan
+                iklim
             )
             print(f"✅ Lahan dengan ID {lahan_id} berhasil ditambahkan.")
 
@@ -117,34 +109,22 @@ def menu_surveyor(conn, user):
     while True:
         header()
         print(f"\n=== MENU SURVEYOR (Login sebagai: {user['username']}) ===")
-        print("1. Input data lahan (survey)")
+        print("1. Survey lahan yang sudah ada")
+        print('2. Input tanaman')
         print("0. Logout")
 
         pilihan = input("Pilih menu: ").strip()
 
         if pilihan == "1":
-            print("\n=== Input Data Lahan (Survey) ===")
-            petani_id = input_angka("Masukkan ID Petani yang disurvey: ", int)
-            lokasi = input("Lokasi lahan: ")
-            ketinggian = input_angka("Ketinggian (meter): ", float)
-            ph = input_angka("pH tanah: ", float)
-            tekstur = input("Tekstur tanah: ")
-            kandungan_nutrisi = input("Kandungan nutrisi: ")
-            suhu = input_angka("Suhu (°C): ", float)
-            curah_hujan = input_angka("Curah hujan (mm): ", float)
+            print("\n=== Input survey ===")
 
-            lahan_id = add_lahan(
-                conn,
-                petani_id,
-                lokasi,
-                ketinggian,
-                ph,
-                tekstur,
-                kandungan_nutrisi,
-                suhu,
-                curah_hujan
-            )
-            print(f"✅ Data lahan hasil survey dengan ID {lahan_id} berhasil ditambahkan.")
+        elif pilihan == "2":
+            print("\n=== Input tanaman baru ===")
+            nama_tanaman = str(input("Nama tanaman: ")).strip()
+            deskripsi = str(input("Deskripsi tanaman (boleh kosong): ")).strip()
+
+            tanaman_id = add_tanaman(conn, nama_tanaman, deskripsi)
+            print(f"Tanaman berhasil ditambah {tanaman_id}")
 
         elif pilihan == "0":
             print("Logout dari surveyor.")
