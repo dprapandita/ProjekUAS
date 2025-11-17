@@ -1,6 +1,11 @@
+import os
 import shutil
 import subprocess
 import sys
+from colorama import Fore, Style, init as colorama_init
+
+# Initialize colorama for cross-platform colored output
+colorama_init(autoreset=True)
 
 TITLE_TEXT = "LABULIS"
 SUBTITLE = "Analisis Kesesuaian Tanaman (Iklim • Tanah • Ketinggian)"
@@ -47,7 +52,9 @@ def frame_block(lines, width):
 
 def render(width: int = 100) -> str:
     width = max(80, width)
-    out = [make_border(width), ""]
+    # Top decorative border (colored)
+    top_border = make_border(width)
+    out = [f"{Fore.GREEN}{Style.BRIGHT}{top_border}{Style.RESET_ALL}", ""]
 
     if ensure_pyfiglet():
         from pyfiglet import Figlet
@@ -65,12 +72,15 @@ def render(width: int = 100) -> str:
 
     # cetak judul terpusat
     for ln in title:
-        out.append(center_line(ln, width))
+        centered = center_line(ln, width)
+        out.append(f"{Fore.YELLOW}{Style.BRIGHT}{centered}{Style.RESET_ALL}")
 
     # garis dekorasi tengah + subtitle
     out.append("")
-    out.append(center_line(make_border(min(width, 90)), width))
-    out.append(center_line(SUBTITLE, width))
+    mid_border = center_line(make_border(min(width, 90)), width)
+    out.append(f"{Fore.GREEN}{Style.BRIGHT}{mid_border}{Style.RESET_ALL}")
+    subtitle_centered = center_line(SUBTITLE, width)
+    out.append(f"{Fore.YELLOW}{Style.BRIGHT}{subtitle_centered}{Style.RESET_ALL}")
     out.append("")
 
     return "\n".join(out)
@@ -82,3 +92,10 @@ def header():
     except Exception:
         width = 100
     print(render(width))
+
+def clear_terminal():
+    try:
+        os.system('cls' if os.name == 'nt' else 'clear')
+    except Exception:
+        # Fallback sederhana jika os.system tidak tersedia/ditolak
+        print("\n" * 100)

@@ -1,7 +1,10 @@
 from core.admin_functions import read_all_users, delete_user, lihat_data_lahan
 from core.analysis import add_lahan, input_angka, add_tanaman, add_survey_data
-from utils.header import header
+from utils.header import header, clear_terminal
 
+
+def enter_break():
+    input("\nTekan Enter untuk lanjut...")
 
 def menu_admin(conn, user):
     """
@@ -10,7 +13,9 @@ def menu_admin(conn, user):
     - Lihat users
     - Lihat data lahan
     """
+
     while True:
+        clear_terminal()
         header()
         print(f"\n=== MENU ADMIN (Login sebagai: {user['username']}) ===")
         print("1. Hapus user")
@@ -33,6 +38,7 @@ def menu_admin(conn, user):
                     print(f"✅ User dengan ID {user_id} dari {role} berhasil dihapus")
             except Exception as error:
                 print(f"Ada error: {error}")
+            enter_break()
 
         elif pilihan == "2":
             users = read_all_users(conn)
@@ -47,13 +53,13 @@ def menu_admin(conn, user):
                 for petani_id, username in petani_list:
                     print(f"  - ID: {petani_id} | Username: {username}")
 
-
             print(f"\nSurveyor ({len(surveyor_list)}):")
             if not surveyor_list:
                 print("  (belum ada surveyor)")
             else:
                 for surveyor_id, username in surveyor_list:
                     print(f"  - ID: {surveyor_id} | Username: {username}")
+            enter_break()
 
         elif pilihan == "3":
             data = lihat_data_lahan(conn)
@@ -71,13 +77,14 @@ def menu_admin(conn, user):
             for survey_id, lahan_id, surveyor_id, hasil, tanggal in data["survey_data"]:
                 print(
                     f"- Survey {survey_id} | Lahan {lahan_id} | Surveyor {surveyor_id} | Hasil: {hasil} | Tgl: {tanggal}")
-
+            enter_break()
 
         elif pilihan == "0":
             print("Logout dari admin.")
             break
         else:
             print("Pilihan tidak valid, coba lagi.")
+            enter_break()
 
 
 def menu_petani(conn, user):
@@ -88,6 +95,7 @@ def menu_petani(conn, user):
     petani_id = user["id"]
 
     while True:
+        clear_terminal()
         header()
         print(f"\n=== MENU PETANI (Login sebagai: {user['username']}) ===")
         print("1. Input lahan milik saya")
@@ -112,12 +120,14 @@ def menu_petani(conn, user):
                 print(f"✅ Lahan dengan ID {lahan_id} berhasil ditambahkan.")
             else:
                 print("⚠️ Gagal menambahkan lahan.")
+            enter_break()
 
         elif pilihan == "0":
             print("Logout dari petani.")
             break
         else:
             print("Pilihan tidak valid, coba lagi.")
+            enter_break()
 
 
 def menu_surveyor(conn, user):
@@ -129,6 +139,7 @@ def menu_surveyor(conn, user):
     """
     surveyor_id = user["id"]
     while True:
+        clear_terminal()
         header()
         print(f"\n=== MENU SURVEYOR (Login sebagai: {user['username']}) ===")
         print("1. Survey lahan yang sudah ada")
@@ -143,6 +154,7 @@ def menu_surveyor(conn, user):
             hasil_survey = input("Hasil survey (deskripsi): ")
             survey_id = add_survey_data(conn, lahan_id, surveyor_id, hasil_survey)
             print(f"✅ Survey baru dengan ID {survey_id} berhasil ditambahkan untuk lahan {lahan_id}.")
+            enter_break()
 
         elif pilihan == "2":
             print("\n=== Input tanaman baru ===")
@@ -154,9 +166,11 @@ def menu_surveyor(conn, user):
                 print("⚠️ Tanaman sudah ada atau gagal ditambahkan.")
             else:
                 print(f"✅ Tanaman berhasil ditambah dengan ID {tanaman_id}")
+            enter_break()
 
         elif pilihan == "0":
             print("Logout dari surveyor.")
             break
         else:
             print("Pilihan tidak valid, coba lagi.")
+            enter_break()

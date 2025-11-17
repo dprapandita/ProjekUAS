@@ -1,11 +1,11 @@
 import utils.database_connection
 from core.auth import signup, login
-from utils.header import header
+from utils.header import header, clear_terminal
 from utils.menus import menu_admin, menu_petani, menu_surveyor
 
 if __name__ == '__main__':
     conn = utils.database_connection.get_connection()
-
+    clear_terminal()
     try:
         while True:
             header()
