@@ -1,4 +1,4 @@
-from core.admin_functions import add_user
+from core.admin_functions import read_all_users, delete_user, lihat_data_lahan
 from core.analysis import add_lahan, input_angka, add_tanaman, add_survey_data
 from utils.header import header
 
@@ -6,42 +6,72 @@ from utils.header import header
 def menu_admin(conn, user):
     """
     Menu untuk role admin:
-    - Tambah user baru (admin/petani/surveyor)
+    - Hapus users
+    - Lihat users
+    - Lihat data lahan
     """
     while True:
         header()
         print(f"\n=== MENU ADMIN (Login sebagai: {user['username']}) ===")
-        print("1. Tambah user baru")
+        print("1. Hapus user")
+        print("2. Lihat user")
+        print("3. Lihat data lahan")
         print("0. Logout")
 
         pilihan = input("Pilih menu: ").strip()
 
         if pilihan == "1":
-            print("\n=== Tambah User Baru ===")
+            print("\n=== Hapus user ===")
             username = input("Username: ")
-            password = input("Password: ")
-            print("Pilih role:")
-            print("1. admin")
-            print("2. petani")
-            print("3. surveyor")
-            role_pilihan = input("Role (1/2/3): ").strip()
-
-            if role_pilihan == "1":
-                role = "admin"
-            elif role_pilihan == "2":
-                role = "petani"
-            elif role_pilihan == "3":
-                role = "surveyor"
-            else:
-                print("Role tidak valid.")
-                continue
+            role = str(input("Role: ")).strip().lower()
 
             try:
-                user_id = add_user(conn, username, password, role)
-                print(f"✅ User baru dengan ID {user_id} dan role '{role}' berhasil ditambahkan.")
+                user_id = delete_user(conn, username, role)
+                if user_id is None:
+                    print(f"⚠️ User '{username}' dengan role '{role}' tidak ditemukan atau tidak dihapus.")
+                else:
+                    print(f"✅ User dengan ID {user_id} dari {role} berhasil dihapus")
             except Exception as error:
                 print(f"Ada error: {error}")
-                break
+
+        elif pilihan == "2":
+            users = read_all_users(conn)
+            print("\n=== Daftar user ===")
+            petani_list = users["petani"]
+            surveyor_list = users["surveyor"]
+
+            print(f"\nPetani ({len(petani_list)}):")
+            if not petani_list:
+                print("  (belum ada petani)")
+            else:
+                for petani_id, username in petani_list:
+                    print(f"  - ID: {petani_id} | Username: {username}")
+
+
+            print(f"\nSurveyor ({len(surveyor_list)}):")
+            if not surveyor_list:
+                print("  (belum ada surveyor)")
+            else:
+                for surveyor_id, username in surveyor_list:
+                    print(f"  - ID: {surveyor_id} | Username: {username}")
+
+        elif pilihan == "3":
+            data = lihat_data_lahan(conn)
+
+            print("\n=== Data Petani ===")
+            for petani_id, username in data["petani"]:
+                print(f"- ID: {petani_id} | Username: {username}")
+
+            print("\n=== Data Lahan ===")
+            for lahan_id, petani_id, tanah, ketinggian, iklim, tanggal in data["lahan"]:
+                print(
+                    f"- Lahan {lahan_id} | Petani {petani_id} | Iklim: {iklim} | Tanah: {tanah} | Ketinggian: {ketinggian} | Tgl: {tanggal}")
+
+            print("\n=== Data Survey ===")
+            for survey_id, lahan_id, surveyor_id, hasil, tanggal in data["survey_data"]:
+                print(
+                    f"- Survey {survey_id} | Lahan {lahan_id} | Surveyor {surveyor_id} | Hasil: {hasil} | Tgl: {tanggal}")
+
 
         elif pilihan == "0":
             print("Logout dari admin.")
@@ -53,31 +83,19 @@ def menu_admin(conn, user):
 def menu_petani(conn, user):
     """
     Menu untuk role petani:
-    - Input tanaman
-    - (opsional) Input lahan milik dirinya sendiri
+    - Input lahan milik petani
     """
-    petani_id = user["user_id"]
+    petani_id = user["id"]
 
     while True:
         header()
         print(f"\n=== MENU PETANI (Login sebagai: {user['username']}) ===")
-        print("1. Input tanaman")
-        print("2. Input lahan milik saya")
+        print("1. Input lahan milik saya")
         print("0. Logout")
 
         pilihan = input("Pilih menu: ").strip()
 
         if pilihan == "1":
-            print("\n=== Input Data Tanaman ===")
-            nama_tanaman = input("Nama tanaman: ")
-            deskripsi_tanaman = input("Deskripsi tanaman (boleh kosong): ")
-            if deskripsi_tanaman.strip() == "":
-                deskripsi_tanaman = None
-
-            tanaman_id = add_tanaman(conn, nama_tanaman, deskripsi_tanaman)
-            print(f"✅ Tanaman dengan ID {tanaman_id} berhasil ditambahkan.")
-
-        elif pilihan == "2":
             print("\n=== Input Data Lahan ===")
             ketinggian = input_angka("Ketinggian (meter): ", float)
             iklim = str(input("Iklim: "))
@@ -90,7 +108,10 @@ def menu_petani(conn, user):
                 tekstur,
                 iklim
             )
-            print(f"✅ Lahan dengan ID {lahan_id} berhasil ditambahkan.")
+            if lahan_id is not None:
+                print(f"✅ Lahan dengan ID {lahan_id} berhasil ditambahkan.")
+            else:
+                print("⚠️ Gagal menambahkan lahan.")
 
         elif pilihan == "0":
             print("Logout dari petani.")
@@ -129,7 +150,10 @@ def menu_surveyor(conn, user):
             deskripsi = str(input("Deskripsi tanaman (boleh kosong): ")).strip()
 
             tanaman_id = add_tanaman(conn, nama_tanaman, deskripsi)
-            print(f"Tanaman berhasil ditambah {tanaman_id}")
+            if tanaman_id is None:
+                print("⚠️ Tanaman sudah ada atau gagal ditambahkan.")
+            else:
+                print(f"✅ Tanaman berhasil ditambah dengan ID {tanaman_id}")
 
         elif pilihan == "0":
             print("Logout dari surveyor.")

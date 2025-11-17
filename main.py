@@ -17,15 +17,18 @@ if __name__ == '__main__':
 
             if pilihan == "1":
                 user = login(conn)
-                match user['role']:
-                    case "admin":
-                        menu_admin(conn, user)
-                    case "petani":
-                        menu_petani(conn, user)
-                    case "surveyor":
-                        menu_surveyor(conn, user)
-                    case Exception as e:
-                        print(f"Ada kesalahan :{e}")
+                if not user:
+                    # Login gagal, kembali ke menu utama
+                    continue
+                role = user.get('role')
+                if role == "admin":
+                    menu_admin(conn, user)
+                elif role == "petani":
+                    menu_petani(conn, user)
+                elif role == "surveyor":
+                    menu_surveyor(conn, user)
+                else:
+                    print("Role tidak dikenali.")
 
 
             elif pilihan == "2":

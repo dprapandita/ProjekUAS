@@ -13,12 +13,12 @@ def input_angka(prompt, tipe=float) -> float | int:
         nilai = input(prompt).strip()
         try:
             return tipe(nilai)
-        except ValueError and AttributeError:
+        except (ValueError, AttributeError):
             print("Input harus angka, coba lagi.\n")
 
 def add_lahan(
         conn, petani_id: int, ketinggian: float, tanah: str, iklim: str
-) -> tuple[str] | None:
+) -> Optional[int]:
     """
     Inputan lahan
     :param conn:
@@ -30,16 +30,17 @@ def add_lahan(
     """
     tanggal = date.today()
 
-    query = (f"INSERT INTO lahan(petani_id, ketinggian, tanah, iklim, tanggal_input) "
-             f"VALUES ('{petani_id}', '{ketinggian}', '{tanah}', '{iklim}', '{tanggal}') RETURNING *;")
-    cursor = conn.cursor()
-    cursor.execute(query)
-    lahan_id = cursor.fetchone()[0]
-    conn.commit()
-    cursor.close()
-    return lahan_id
+    query = (
+        "INSERT INTO lahan(petani_id, ketinggian, tanah, iklim, tanggal_input) "
+        "VALUES (%s, %s, %s, %s, %s) RETURNING lahan_id;"
+    )
+    with conn.cursor() as cursor:
+        cursor.execute(query, (petani_id, ketinggian, tanah, iklim, tanggal))
+        row = cursor.fetchone()
+        conn.commit()
+        return row[0] if row else None
 
-def add_tanaman(conn, nama_tanaman, deskripsi) -> tuple[str, str] | None:
+def add_tanaman(conn, nama_tanaman, deskripsi) -> Optional[int]:
     """
     Inputan tanaman
     :param conn:
@@ -47,20 +48,23 @@ def add_tanaman(conn, nama_tanaman, deskripsi) -> tuple[str, str] | None:
     :param deskripsi:
     :return tuple[str, str] | None:
     """
-    cursor = conn.cursor()
-    check_query = f"SELECT nama FROM tanaman WHERE nama LIKE '{nama_tanaman}'"
-    cursor.execute(check_query)
-    if cursor.fetchone():
-        print(f"nama tanaman {nama_tanaman} sudah ada")
-        return None
+    with conn.cursor() as cursor:
+        # Cek eksistensi case-insensitive
+        cursor.execute("SELECT 1 FROM tanaman WHERE LOWER(nama) = LOWER(%s)", (nama_tanaman,))
+        if cursor.fetchone():
+            print(f"nama tanaman {nama_tanaman} sudah ada")
+            return None
 
-    query = f"INSERT INTO tanaman VALUES ('{nama_tanaman}', '{deskripsi}') RETURNING *;"
-    cursor.execute(query)
-    result = cursor.fetchone()
-    conn.commit()
-    cursor.close()
-    print(f"nama tanaman {nama_tanaman} dengan deskripsi {deskripsi} sudah masuk")
-    return result
+        cursor.execute(
+            "INSERT INTO tanaman (nama, deskripsi) VALUES (%s, %s) RETURNING tanaman_id;",
+            (nama_tanaman, deskripsi),
+        )
+        row = cursor.fetchone()
+        conn.commit()
+        tanaman_id = row[0] if row else None
+        if tanaman_id is not None:
+            print(f"nama tanaman {nama_tanaman} dengan deskripsi {deskripsi} sudah masuk")
+        return tanaman_id
 
 def add_survey_data(
     conn,

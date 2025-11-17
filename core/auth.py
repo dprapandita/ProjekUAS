@@ -7,7 +7,7 @@ def signup(conn: psycopg2.extensions.connection) -> None:
     :param conn:
     :return None:
     """
-    print("Signing in ...")
+    print("Mendaftar user baru...")
     role = None
     while role not in ['surveyor', 'petani']:
         role = input("Daftar sebagai (surveyor/petani): ").strip().lower()
@@ -17,17 +17,17 @@ def signup(conn: psycopg2.extensions.connection) -> None:
     username = input("Username: ").strip()
     password = input("Password: ").strip()
 
-    table = role
+    table = role  # aman karena role sudah divalidasi hanya ke dua nilai ini
     cursor = conn.cursor()
 
-    cursor.execute(f"SELECT * FROM {table} WHERE username = %s", (username,))
+    cursor.execute(f"SELECT 1 FROM {table} WHERE username = %s", (username,))
 
     if cursor.fetchone():
         print("Username sudah terdaftar, coba username lain.")
         cursor.close()
         return
 
-    user_query = f"INSERT INTO {table} (username, password) VALUES ('{username}', '{password}')"
+    user_query = f"INSERT INTO {table} (username, password) VALUES (%s, %s)"
     cursor.execute(user_query, (username, password))
     conn.commit()
     cursor.close()
@@ -61,12 +61,11 @@ def login(conn: psycopg2.extensions.connection) -> dict[str, str] | None:
         id_field = 'petani_id'
 
     cursor = conn.cursor()
-    query = f"SELECT {id_field}, username FROM {table_name} WHERE username = '{username}' AND password = '{password}';"
-    cursor.execute(query)
+    query = f"SELECT {id_field}, username FROM {table_name} WHERE username = %s AND password = %s;"
+    cursor.execute(query, (username, password))
     result = cursor.fetchone()
     cursor.close()
     if result:
-        print(result)
         user = {
             'id': result[0],
             'username': username,
