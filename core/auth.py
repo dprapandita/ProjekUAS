@@ -26,6 +26,10 @@ def signup(conn: psycopg2.extensions.connection) -> None:
         print("Username sudah terdaftar, coba username lain.")
         cursor.close()
         return
+    
+    if input("Mau lanjut ke login? (y/n): ").strip().lower() == 'y':
+        login(conn)
+        return
 
     user_query = f"INSERT INTO {table} (username, password) VALUES (%s, %s)"
     cursor.execute(user_query, (username, password))

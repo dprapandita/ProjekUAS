@@ -77,12 +77,6 @@ def read_all_users(conn: psycopg2.extensions.connection) -> dict[str, list[tuple
         "surveyor": surveyor,
     }
 
-# def lihat_data_lahan(conn: psycopg2.extensions.connection) -> dict[str, Any]:
-#     cursor = conn.cursor()
-#     cursor.execute("SELECT * FROM petani")
-#     petani = cursor.fetchall()
-#     survey_id = cursor.execute("SELECT * FROM survey_data")
-
 def lihat_data_lahan(conn: psycopg2.extensions.connection) -> dict[str, Any]:
     cursor = conn.cursor()
 

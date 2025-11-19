@@ -1,10 +1,10 @@
 from core.admin_functions import read_all_users, delete_user, lihat_data_lahan
-from core.analysis import add_lahan, input_angka, add_tanaman, add_survey_data
+from core.analysis import add_lahan, input_angka, add_tanaman, add_survey_data, lihat_lahan_universal
 from utils.header import header, clear_terminal
 
 
 def enter_break():
-    input("\nTekan Enter untuk lanjut...")
+    input("\nTekan Enter untuk lanjut...")  
 
 def menu_admin(conn, user):
     """
@@ -99,6 +99,8 @@ def menu_petani(conn, user):
         header()
         print(f"\n=== MENU PETANI (Login sebagai: {user['username']}) ===")
         print("1. Input lahan milik saya")
+        print("2. Lihat lahan saya")
+        print("3. Lihat hasil analisis di lahan saya")
         print("0. Logout")
 
         pilihan = input("Pilih menu: ").strip()
@@ -121,6 +123,9 @@ def menu_petani(conn, user):
             else:
                 print("⚠️ Gagal menambahkan lahan.")
             enter_break()
+
+        elif pilihan == "2":
+            lihat_lahan_universal(conn, user)
 
         elif pilihan == "0":
             print("Logout dari petani.")
@@ -149,6 +154,7 @@ def menu_surveyor(conn, user):
         pilihan = input("Pilih menu: ").strip()
 
         if pilihan == "1":
+            lihat_lahan_universal(conn, user)
             print("\n=== Input survey ===")
             lahan_id = int(input("ID lahan yang disurvey: "))
             hasil_survey = input("Hasil survey (deskripsi): ")

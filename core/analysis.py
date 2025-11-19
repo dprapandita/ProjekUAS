@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, Any
 
 
 def input_angka(prompt, tipe=float) -> float | int:
@@ -39,6 +39,78 @@ def add_lahan(
         row = cursor.fetchone()
         conn.commit()
         return row[0] if row else None
+
+def lihat_lahan_universal(
+    conn,
+    user: dict[str, Any],
+) -> list[tuple[Any, ...]] | None:
+    """
+    Ambil data lahan tergantung role:
+    - petani   → lahan milik petani itu sendiri
+    - surveyor → lahan yang pernah dia survey
+    """
+    role = user["role"]
+    user_id = user["id"]
+
+    cursor = conn.cursor()
+
+    if role == "petani":
+        # lahan milik petani ini saja
+        cursor.execute(
+            """
+            SELECT
+                l.lahan_id,
+                p.username AS nama_petani,
+                l.tanah,
+                l.ketinggian,
+                l.iklim,
+                l.tanggal_input
+            FROM lahan l
+            JOIN petani p ON p.petani_id = l.petani_id
+            WHERE l.petani_id = %s
+            ORDER BY l.lahan_id;
+            """,
+            (user_id,)
+        )
+
+    elif role == "surveyor":
+        # lahan yang pernah disurvey oleh surveyor ini
+        cursor.execute(
+            """
+            SELECT DISTINCT
+                l.lahan_id,
+                p.username AS nama_petani,
+                l.tanah,
+                l.ketinggian,
+                l.iklim,
+                l.tanggal_input
+            FROM survey_data sd
+            JOIN lahan l
+                ON l.lahan_id = sd.lahan_id
+            LEFT JOIN petani p
+                ON p.petani_id = l.petani_id
+            WHERE sd.surveyor_id = %s
+            ORDER BY l.lahan_id;
+            """,
+            (user_id,)
+        )
+
+    else:
+        cursor.close()
+        print(f"Role '{role}' gada")
+
+    rows = cursor.fetchall()
+    cursor.close()
+
+    print("\n=== Daftar Lahan ===")
+    if not rows:
+        print("\nMasih kosong  ")
+    for lahan_id, nama_petani, tanah, ketinggian, iklim, tanggal in rows:
+        print(
+            f"- ID: {lahan_id} | Petani: {nama_petani} | Tanah: {tanah} | "
+            f"Ketinggian: {ketinggian} | Iklim: {iklim} | Tgl: {tanggal}"
+        )
+
 
 def add_tanaman(conn, nama_tanaman, deskripsi) -> Optional[int]:
     """

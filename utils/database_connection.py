@@ -13,9 +13,14 @@ def get_connection():
     Koneksi untuk database postgresql
     :return connection:
     """
-    return psycopg2.connect(
-        host=DB_CONFIG['host'],
-        database=DB_CONFIG['database'],
-        user=DB_CONFIG['user'],
-        password=DB_CONFIG['password'],
-    )
+    try:
+
+        return psycopg2.connect(
+            host=DB_CONFIG['host'],
+            database=DB_CONFIG['database'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+        )
+    except psycopg2.Error as e :
+        print("Gagal koneksi ke database:", e)
+        exit(1)
