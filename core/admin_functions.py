@@ -4,92 +4,221 @@ import psycopg2
 
 
 def add_user(
-    conn: psycopg2.extensions.connection,
+    conn,
+    name: str,
     username: str,
     password: str,
-    role: str,
-) -> Optional[tuple[Any, ...]]:
+    role_name: str,
+    email: str | None = None,
+    no_telp: str | None = None,
+) -> Optional[tuple[int, str, str]]:
     """
-    Menambahkan user dari sisi admin
-    :param conn:
-    :param username:
-    :param password:
-    :param role:
-    :return: tuple[str,str] | None
+    Tambah user baru ke tabel users + set role di user_roles.
+    :return: (user_id, username, role_name) atau None jika username sudah ada / role tidak ditemukan.
     """
-
-    if role not in ["petani", "surveyor"]:
-        raise ValueError("Role harus 'petani' atau 'surveyor'.")
-
-    id_field = f"{role}_id"
-
-    with conn.cursor() as cursor:
-        cursor.execute(f"SELECT 1 FROM {role} WHERE username = %s", (username,))
-        if cursor.fetchone():
+    with conn.cursor() as cur:
+        # Cek username sudah ada atau belum
+        cur.execute("SELECT 1 FROM users WHERE username = %s", (username,))
+        if cur.fetchone():
             print("Username sudah ada.")
             return None
 
-        cursor.execute(
-            f"INSERT INTO {role} (username, password) VALUES (%s, %s) RETURNING {id_field}, username",
-            (username, password),
+        # Ambil role_id
+        cur.execute(
+            "SELECT role_id FROM roles WHERE LOWER(nama_role) = LOWER(%s)",
+            (role_name,),
         )
-        new_user = cursor.fetchone()
+        role_row = cur.fetchone()
+        if not role_row:
+            print(f"Role '{role_name}' tidak ditemukan di tabel roles.")
+            return None
+        role_id = role_row[0]
+
+        # Insert ke users
+        cur.execute(
+            """
+            INSERT INTO users (name, username, password, email, no_telp)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING user_id, username;
+            """,
+            (name, username, password, email, no_telp),
+        )
+        user_row = cur.fetchone()
+        if not user_row:
+            conn.rollback()
+            return None
+        user_id, username_db = user_row
+
+        # Insert ke user_roles
+        cur.execute(
+            """
+            INSERT INTO user_roles (id_user, id_role)
+            VALUES (%s, %s)
+            """,
+            (user_id, role_id),
+        )
+
         conn.commit()
-        return new_user
+        print(f"User {username_db} dengan role {role_name} berhasil dibuat.")
+        return user_id, username_db, role_name
+
 
 def delete_user(
-    conn: psycopg2.extensions.connection, username: str, role: str
+    conn,
+    username: str,
+    role_name: str | None = None,
 ) -> Optional[int]:
-    role = role.strip().lower()
-    if role not in ["petani", "surveyor"]:
-        raise ValueError("Role tidak valid. Gunakan 'petani' atau 'surveyor'.")
+    """
+    Hapus user berdasarkan username.
+    Jika role_name diisi, pastikan user punya role tsb dulu.
+    Return: user_id yang terhapus atau None.
+    """
+    with conn.cursor() as cur:
+        if role_name:
+            # Pastikan user dengan role tertentu
+            cur.execute(
+                """
+                SELECT u.user_id
+                FROM users u
+                JOIN user_roles ur ON ur.id_user = u.user_id
+                JOIN roles r       ON r.role_id = ur.id_role
+                WHERE u.username = %s
+                  AND LOWER(r.nama_role) = LOWER(%s)
+                """,
+                (username, role_name),
+            )
+        else:
+            # Hanya berdasarkan username
+            cur.execute(
+                "SELECT user_id FROM users WHERE username = %s",
+                (username,),
+            )
 
-    id_field = f"{role}_id"
-
-    with conn.cursor() as cursor:
-        cursor.execute(f"SELECT {id_field} FROM {role} WHERE username = %s", (username,))
-        row = cursor.fetchone()
+        row = cur.fetchone()
         if not row:
-            print(f"Username {username} tidak ditemukan pada role {role}.")
+            print(f"User '{username}' tidak ditemukan.")
             return None
 
-        cursor.execute(
-            f"DELETE FROM {role} WHERE username = %s RETURNING {id_field}", (username,)
+        user_id = row[0]
+
+        # Hapus dulu dari user_roles (FK)
+        cur.execute("DELETE FROM user_roles WHERE id_user = %s", (user_id,))
+        # Hapus dari users
+        cur.execute(
+            "DELETE FROM users WHERE user_id = %s RETURNING user_id;",
+            (user_id,),
         )
-        deleted = cursor.fetchone()
+        deleted = cur.fetchone()
         conn.commit()
+        print(f"User '{username}' terhapus.")
         return deleted[0] if deleted else None
 
 
 def read_all_users(conn: psycopg2.extensions.connection) -> dict[str, list[tuple[Any, ...]]]:
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT petani_id, username FROM petani")
-    petani = cursor.fetchall()
-
-    cursor.execute("SELECT surveyor_id, username FROM surveyor")
-    surveyor = cursor.fetchall()
+    with conn.cursor() as cursor:
+        cursor.execute("""
+            SELECT r.nama_role, u.user_id, u.name, u.username
+            FROM users u
+            JOIN user_roles ur ON ur.id_user = u.user_id
+            JOIN roles r       ON r.role_id = ur.id_role
+            ORDER BY r.nama_role, u.user_id;
+            """)
+        rows = cursor.fetchall()
 
     cursor.close()
 
-    return {
-        "petani": petani,
-        "surveyor": surveyor,
-    }
+    result: dict[str, list[tuple[int, str, str]]] = {}
+    for nama_role, user_id, name, username in rows:
+        key = nama_role.lower()
+        result.setdefault(key, []).append((user_id, name, username))
+    return result
 
-def lihat_data_lahan(conn: psycopg2.extensions.connection) -> dict[str, Any]:
+def lihat_data_lahan(conn) -> dict[str, Any]:
+    """
+    Ambil overview data:
+    - user yang berperan sebagai petani
+    - semua lahan + alamat + surveyor
+    - semua survey_data + info iklim, tanah, tanaman
+    """
     cursor = conn.cursor()
 
-    cursor.execute("SELECT petani_id, username FROM petani")
+    # 1. Ambil semua user yang punya role 'petani'
+    cursor.execute(
+        """
+        SELECT
+            u.user_id,
+            u.name,
+            u.username,
+            u.email,
+            u.no_telp
+        FROM users u
+        JOIN user_roles ur ON ur.id_user = u.user_id
+        JOIN roles r       ON r.role_id = ur.id_role
+        WHERE LOWER(r.nama_role) = 'petani'
+        ORDER BY u.user_id;
+        """
+    )
     petani = cursor.fetchall()
 
+    # 2. Ambil semua lahan + surveyor + alamat (kalau ada)
     cursor.execute(
-        "SELECT lahan_id, petani_id, tanah, ketinggian, iklim, tanggal_input FROM lahan"
+        """
+        SELECT
+            l.lahan_id,
+            l.ketinggian,
+            u_surveyor.user_id   AS surveyor_id,
+            u_surveyor.name      AS nama_surveyor,
+            a.alamat_id,
+            a.nama_jalan,
+            kc.nama_kecamatan,
+            k.nama_kota,
+            p.nama_provinsi
+        FROM lahan l
+        LEFT JOIN users u_surveyor   ON u_surveyor.user_id = l.id_user_surveyor
+        LEFT JOIN alamat a           ON a.alamat_id = l.id_alamat
+        LEFT JOIN kecamatan kc       ON kc.kecamatan_id = a.id_kecamatan
+        LEFT JOIN kota k             ON k.kota_id = a.id_kota
+        LEFT JOIN provinsi p         ON p.provinsi_id = a.id_provinsi
+        ORDER BY l.lahan_id;
+        """
     )
     lahan = cursor.fetchall()
 
+    # 3. Ambil semua survey_data + iklim + tanah + tanaman + petani
     cursor.execute(
-        "SELECT survey_id, lahan_id, surveyor_id, hasil_survey, tanggal_survey FROM survey_data"
+        """
+        SELECT
+            sd.survey_id,
+            sd.id_lahan,
+            sd.id_user_surveyor,
+            us.name               AS nama_surveyor,
+            sd.id_user_admin,
+            ua.name               AS nama_admin,
+            sd.status_survey,
+            sd.tanggal_survey,
+
+            sd.id_iklim,
+            ik.jenis_cuaca,
+
+            sd.id_tanah,
+            kt.kondisi_tanah,
+            kt.ph,
+            kt.kandungan_nutrisi,
+            kt.kelembapan,
+
+            sd.id_tanaman,
+            t.nama                AS nama_tanaman,
+            up.user_id            AS petani_id,
+            up.name               AS nama_petani
+        FROM survey_data sd
+        LEFT JOIN users us          ON us.user_id = sd.id_user_surveyor
+        LEFT JOIN users ua          ON ua.user_id = sd.id_user_admin
+        LEFT JOIN iklim ik          ON ik.iklim_id = sd.id_iklim
+        LEFT JOIN kondisi_tanah kt  ON kt.kondisi_tanah_id = sd.id_tanah
+        LEFT JOIN tanaman t         ON t.tanaman_id = sd.id_tanaman
+        LEFT JOIN users up          ON up.user_id = t.id_user
+        ORDER BY sd.survey_id;
+        """
     )
     survey_data = cursor.fetchall()
 

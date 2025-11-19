@@ -3,8 +3,8 @@ import psycopg2
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'postgres',
-    'password': '1234',
-    'database': 'projekuas',
+    'password': '23',
+    'database': 'ProjekUAS',
 }
 
 

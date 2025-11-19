@@ -41,24 +41,25 @@ def menu_admin(conn, user):
             enter_break()
 
         elif pilihan == "2":
-            users = read_all_users(conn)
+            all_users = read_all_users(conn)
             print("\n=== Daftar user ===")
-            petani_list = users["petani"]
-            surveyor_list = users["surveyor"]
+            petani_list = all_users.get("petani", [])
+            surveyor_list = all_users.get("surveyor", [])
 
             print(f"\nPetani ({len(petani_list)}):")
             if not petani_list:
                 print("  (belum ada petani)")
             else:
-                for petani_id, username in petani_list:
-                    print(f"  - ID: {petani_id} | Username: {username}")
+                for user_id, name, username in petani_list:
+                    print(f"  - ID: {user_id} | Nama: {name} | Username: {username}")
 
             print(f"\nSurveyor ({len(surveyor_list)}):")
             if not surveyor_list:
                 print("  (belum ada surveyor)")
             else:
-                for surveyor_id, username in surveyor_list:
-                    print(f"  - ID: {surveyor_id} | Username: {username}")
+                for user_id, name, username in surveyor_list:
+                    print(f"  - ID: {user_id} | Nama: {name} | Username: {username}")
+
             enter_break()
 
         elif pilihan == "3":
@@ -106,17 +107,27 @@ def menu_petani(conn, user):
         pilihan = input("Pilih menu: ").strip()
 
         if pilihan == "1":
-            print("\n=== Input Data Lahan ===")
-            ketinggian = input_angka("Ketinggian (meter): ", float)
-            iklim = str(input("Iklim: "))
-            tekstur = input("Tekstur tanah: ")
+            print("\n=== Input Data Lahan Milik Saya ===")
+            try:
+                ketinggian = float(input("Ketinggian (meter): ").strip())
+            except ValueError:
+                print("Ketinggian harus angka.")
+                enter_break()
+                continue
+
+            # sementara alamat & surveyor boleh kosong (None)
+            id_alamat_inp = input("ID alamat (boleh kosong): ").strip()
+            id_alamat = int(id_alamat_inp) if id_alamat_inp else None
+
+            id_surveyor_inp = input("ID surveyor (boleh kosong): ").strip()
+            id_user_surveyor = int(id_surveyor_inp) if id_surveyor_inp else None
 
             lahan_id = add_lahan(
                 conn,
-                petani_id,
-                ketinggian,
-                tekstur,
-                iklim
+                id_user_petani=petani_id,
+                id_user_surveyor=id_user_surveyor,
+                id_alamat=id_alamat,
+                ketinggian=ketinggian,
             )
             if lahan_id is not None:
                 print(f"✅ Lahan dengan ID {lahan_id} berhasil ditambahkan.")
@@ -126,6 +137,7 @@ def menu_petani(conn, user):
 
         elif pilihan == "2":
             lihat_lahan_universal(conn, user)
+            enter_break()
 
         elif pilihan == "0":
             print("Logout dari petani.")

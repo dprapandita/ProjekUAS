@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS users(
     password VARCHAR(20) NOT NULL,
     email VARCHAR(50) UNIQUE NULL,
     no_telp VARCHAR(13) UNIQUE NULL,
-    pembuatan TIMESTAMP default now()::DATE
+    pembuatan TIMESTAMP default now()::DATE,
+    id_alamat INTEGER REFERENCES alamat(alamat_id)
 );
 
 CREATE TABLE IF NOT EXISTS roles(
@@ -65,9 +66,20 @@ INSERT INTO users (name, username, password) VALUES
 -- Insert roles
 INSERT INTO roles (nama_role) VALUES ('admin'), ('petani'), ('surveyor');
 
+-- Penghubung user dan roles
+INSERT INTO user_roles (id_user, id_role)
+SELECT u.user_id, r.role_id
+FROM users u
+JOIN roles r ON (
+    (u.username = 'ejak'  AND r.nama_role = 'admin') OR
+    (u.username = 'divo'  AND r.nama_role = 'petani') OR
+    (u.username = 'zera'  AND r.nama_role = 'surveyor')
+);
+
 CREATE TABLE IF NOT EXISTS lahan (
     lahan_id SERIAL PRIMARY KEY,
     id_user_surveyor INTEGER REFERENCES users(user_id),
+    id_user_petani INTEGER REFERENCES  users(user_id),
     id_alamat INTEGER REFERENCES alamat(alamat_id),
     ketinggian REAL NOT NULL
 );
