@@ -91,15 +91,15 @@ CREATE TABLE IF NOT EXISTS survey_data (
 
 CREATE TABLE IF NOT EXISTS penanaman (
     penanaman_id SERIAL PRIMARY KEY,
-    lahan_id INTEGER REFERENCES lahan(lahan_id),
-    tanaman_id INTEGER REFERENCES tanaman(tanaman_id),
-    tanggal_tanam DATE
+    id_survey INTEGER REFERENCES survey_data(survey_id),
+    tanggal_penanaman DATE,
+    status_survey VARCHAR(20)
 );
 
 -- ALTER TABLE lahan ADD COLUMN admin_id integer REFERENCES admin(admin_id);
 
 ALTER TABLE survey_data ADD COLUMN admin_id integer REFERENCES admin(admin_id);
 
-ALTER TABLE petani ADD COLUMN admin_id integer REFERENCES admin(admin_id);
+-- ALTER TABLE petani ADD COLUMN admin_id integer REFERENCES admin(admin_id);
 
-ALTER TABLE surveyor ADD COLUMN admin_id integer REFERENCES admin(admin_id);
+-- ALTER TABLE surveyor ADD COLUMN admin_id integer REFERENCES admin(admin_id);
