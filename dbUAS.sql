@@ -21,25 +21,26 @@ CREATE TABLE alamat (
     id_provinsi   INTEGER REFERENCES provinsi(provinsi_id)
 );
 
--- Tabel admin
-CREATE TABLE IF NOT EXISTS admin (
-    admin_id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(100) NOT NULL
+CREATE TABLE IF NOT EXISTS users(
+    user_id SERIAL PRIMARY KEY NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    username VARCHAR(100) NOT NULL,
+    password VARCHAR(20) NOT NULL,
+    email VARCHAR(50) UNIQUE NULL,
+    no_telp VARCHAR(13) UNIQUE NULL,
+    pembuatan TIMESTAMP default now()::DATE
 );
 
--- Tabel surveyor
-CREATE TABLE IF NOT EXISTS surveyor (
-    surveyor_id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(100) NOT NULL
+CREATE TABLE IF NOT EXISTS roles(
+    role_id SERIAL PRIMARY KEY NOT NULL,
+    nama_role VARCHAR(100) NOT NULL,
+    pembuatan TIMESTAMP default now()::DATE
 );
 
--- Tabel petani
-CREATE TABLE IF NOT EXISTS petani (
-    petani_id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password VARCHAR(100) NOT NULL
+CREATE TABLE IF NOT EXISTS user_roles(
+    user_role_id SERIAL PRIMARY KEY NOT NULL,
+    id_user INTEGER REFERENCES users(user_id),
+    id_role INTEGER REFERENCES roles(role_id)
 );
 
 CREATE TABLE IF NOT EXISTS iklim(
@@ -49,17 +50,24 @@ CREATE TABLE IF NOT EXISTS iklim(
 
 CREATE TABLE IF NOT EXISTS kondisi_tanah(
     kondisi_tanah_id SERIAL PRIMARY KEY,
-    kondisi_tanah VARCHAR(20) NOT NULL
+    kondisi_tanah VARCHAR(20) NOT NULL,
+    ph FLOAT NOT NULL,
+    kandungan_nutrisi FLOAT NOT NULL,
+    kelembapan FLOAT NOT NULL
 );
 
 -- Insert data default
-INSERT INTO admin (username, password) VALUES ('ejak', '23');
-INSERT INTO petani (username, password) VALUES ('divo', '23');
-INSERT INTO surveyor (username, password) VALUES ('zera', '23');
+INSERT INTO users (name, username, password) VALUES
+('Admin Ejak', 'ejak', '23'),
+('Petani Divo', 'divo', '23'),
+('Surveyor Zera', 'zera', '23');
+
+-- Insert roles
+INSERT INTO roles (nama_role) VALUES ('admin'), ('petani'), ('surveyor');
 
 CREATE TABLE IF NOT EXISTS lahan (
     lahan_id SERIAL PRIMARY KEY,
-    id_petani INTEGER REFERENCES petani(petani_id),
+    id_user_surveyor INTEGER REFERENCES users(user_id),
     id_alamat INTEGER REFERENCES alamat(alamat_id),
     ketinggian REAL NOT NULL
 );
@@ -72,34 +80,25 @@ CREATE TABLE IF NOT EXISTS tipe_tanaman(
 CREATE TABLE IF NOT EXISTS tanaman (
     tanaman_id SERIAL PRIMARY KEY,
     id_tipe_tanaman INTEGER REFERENCES tipe_tanaman(tipe_tanaman_id),
-    id_admin INTEGER REFERENCES admin(admin_id),
-    nama VARCHAR(100) NOT NULL,
-    deskripsi TEXT NULL
+    id_user INTEGER REFERENCES users(user_id),
+    nama VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS survey_data (
     survey_id SERIAL PRIMARY KEY,
     nama_tanaman VARCHAR(50),
-    id_surveyor INTEGER REFERENCES surveyor(surveyor_id),
+    id_user_surveyor INTEGER REFERENCES users(user_id),
+    id_user_admin INTEGER REFERENCES users(user_id),
     id_lahan INTEGER REFERENCES lahan(lahan_id),
     id_iklim INTEGER REFERENCES iklim(iklim_id),
     id_tanah INTEGER REFERENCES  kondisi_tanah(kondisi_tanah_id),
-    status_survey VARCHAR(10) default 'waiting',
-    tanggal_survey DATE DEFAULT now()::DATE,
-    id_tanaman INTEGER REFERENCES tanaman(tanaman_id)
+    status_survey VARCHAR(15) default 'waiting',
+    id_tanaman INTEGER REFERENCES tanaman(tanaman_id),
+    tanggal_survey DATE DEFAULT now()::DATE
 );
 
 CREATE TABLE IF NOT EXISTS penanaman (
     penanaman_id SERIAL PRIMARY KEY,
     id_survey INTEGER REFERENCES survey_data(survey_id),
-    tanggal_penanaman DATE,
-    status_survey VARCHAR(20)
+    tanggal_penanaman DATE
 );
-
--- ALTER TABLE lahan ADD COLUMN admin_id integer REFERENCES admin(admin_id);
-
-ALTER TABLE survey_data ADD COLUMN admin_id integer REFERENCES admin(admin_id);
-
--- ALTER TABLE petani ADD COLUMN admin_id integer REFERENCES admin(admin_id);
-
--- ALTER TABLE surveyor ADD COLUMN admin_id integer REFERENCES admin(admin_id);
