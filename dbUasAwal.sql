@@ -42,12 +42,6 @@ CREATE TABLE tanaman (
     id_tipe_tanaman INTEGER REFERENCES tipe_tanaman(tipe_tanaman_id)
 );
 
-CREATE TABLE tanaman (
-    tanaman_id      SERIAL PRIMARY KEY,
-    id_tipe_tanaman INTEGER REFERENCES tipe_tanaman(tipe_tanaman_id),
-    nama            VARCHAR(100) NOT NULL
-);
-
 CREATE TABLE survey_data (
     survey_id        SERIAL PRIMARY KEY,
     id_lahan         INTEGER REFERENCES lahan(lahan_id),
