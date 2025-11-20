@@ -4,7 +4,6 @@ import subprocess
 import sys
 from colorama import Fore, Style, init as colorama_init
 
-# Initialize colorama for cross-platform colored output
 colorama_init(autoreset=True)
 
 TITLE_TEXT = "LABULIS"

@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS users(
     password VARCHAR(20) NOT NULL,
     email VARCHAR(50) UNIQUE NULL,
     no_telp VARCHAR(13) UNIQUE NULL,
-    pembuatan TIMESTAMP default now()::DATE,
-    id_alamat INTEGER REFERENCES alamat(alamat_id)
+    id_alamat INTEGER REFERENCES alamat(alamat_id),
+    pembuatan TIMESTAMP default now()::DATE
 );
 
 CREATE TABLE IF NOT EXISTS roles(
@@ -89,12 +89,39 @@ CREATE TABLE IF NOT EXISTS tipe_tanaman(
     jenis_tanaman VARCHAR(20) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS tanaman (
+CREATE TABLE IF NOT EXISTS tanaman(
     tanaman_id SERIAL PRIMARY KEY,
     id_tipe_tanaman INTEGER REFERENCES tipe_tanaman(tipe_tanaman_id),
-    id_user INTEGER REFERENCES users(user_id),
     nama VARCHAR(100) NOT NULL
 );
+
+INSERT INTO tipe_tanaman(jenis_tanaman) VALUES
+                            ('Holticultura'),
+                            ('Agrivultura'),
+                            ('Umbi-Umbian');
+
+-- Holticlutura (1)
+INSERT INTO tanaman (id_tipe_tanaman, nama) VALUES
+    (1, 'Cabai'),
+    (1, 'Tomat'),
+    (1, 'Kol'),
+    (1, 'Sawi'),
+    (1, 'Selada');
+
+-- Agrivultura (2)
+INSERT INTO tanaman (id_tipe_tanaman, nama) VALUES
+    (2, 'Padi'),
+    (2, 'Jagung'),
+    (2, 'Gandum'),
+    (2, 'Kedelai');
+
+-- Umbi-Umbian (3)
+INSERT INTO tanaman (id_tipe_tanaman, nama) VALUES
+    (3, 'Kentang'),
+    (3, 'Singkong'),
+    (3, 'Ubi Jalar'),
+    (3, 'Talas');
+
 
 CREATE TABLE IF NOT EXISTS survey_data (
     survey_id SERIAL PRIMARY KEY,

@@ -4,13 +4,13 @@ import psycopg2
 
 
 def add_user(
-    conn,
-    name: str,
-    username: str,
-    password: str,
-    role_name: str,
-    email: str | None = None,
-    no_telp: str | None = None,
+        conn,
+        name: str,
+        username: str,
+        password: str,
+        role_name: str,
+        email: str | None = None,
+        no_telp: str | None = None,
 ) -> Optional[tuple[int, str, str]]:
     """
     Tambah user baru ke tabel users + set role di user_roles.
@@ -63,10 +63,38 @@ def add_user(
         return user_id, username_db, role_name
 
 
+def get_user_by_id(conn: psycopg2.extensions.connection, user_id: int) -> Optional[dict[str, Any]]:
+    """
+        Ambil data user dari tabel users berdasarkan user_id.
+        """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT user_id, name, username, email, no_telp, id_alamat
+            FROM users
+            WHERE user_id = %s
+            """,
+            (user_id,),
+        )
+        row = cur.fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "user_id": row[0],
+        "name": row[1],
+        "username": row[2],
+        "email": row[3],
+        "no_telp": row[4],
+        "id_alamat": row[5],
+    }
+
+
 def delete_user(
-    conn,
-    username: str,
-    role_name: str | None = None,
+        conn,
+        username: str,
+        role_name: str | None = None,
 ) -> Optional[int]:
     """
     Hapus user berdasarkan username.
@@ -125,20 +153,75 @@ def read_all_users(conn: psycopg2.extensions.connection) -> dict[str, list[tuple
             """)
         rows = cursor.fetchall()
 
-    cursor.close()
-
-    result: dict[str, list[tuple[int, str, str]]] = {}
+    result = {}
     for nama_role, user_id, name, username in rows:
         key = nama_role.lower()
         result.setdefault(key, []).append((user_id, name, username))
     return result
 
+def update_user_profile(
+    conn: psycopg2.extensions.connection,
+    user_id: int,
+    *,
+    name: Optional[str] = None,
+    email: Optional[str] = None,
+    no_telp: Optional[str] = None,
+    password: Optional[str] = None,
+    id_alamat: Optional[int] = None,
+) -> bool:
+    """
+    Update profil user di tabel users.
+    Field yang None tidak akan di-update.
+    Return True kalau ada baris yang berubah.
+    """
+    fields = []
+    values: list[Any] = []
+
+    if name is not None:
+        fields.append("name = %s")
+        values.append(name)
+
+    if email is not None:
+        fields.append("email = %s")
+        values.append(email)
+
+    if no_telp is not None:
+        fields.append("no_telp = %s")
+        values.append(no_telp)
+
+    if password is not None:
+        fields.append("password = %s")
+        values.append(password)
+
+    if id_alamat is not None:
+        fields.append("id_alamat = %s")
+        values.append(id_alamat)
+
+    # kalau gak ada yang mau diupdate, langsung balik
+    if not fields:
+        print("Tidak ada data yang diubah.")
+        return False
+
+    values.append(user_id)
+
+    query = f"""
+        UPDATE users
+        SET {", ".join(fields)}
+        WHERE user_id = %s
+    """
+
+    with conn.cursor() as cur:
+        cur.execute(query, tuple(values))
+        conn.commit()
+        return cur.rowcount > 0
+
+
 def lihat_data_lahan(conn) -> dict[str, Any]:
     """
     Ambil overview data:
     - user yang berperan sebagai petani
-    - semua lahan + alamat + surveyor
-    - semua survey_data + info iklim, tanah, tanaman
+    - semua lahan + alamat + surveyor + petani
+    - semua survey_data + info iklim, tanah, tanaman + petani
     """
     cursor = conn.cursor()
 
@@ -160,40 +243,49 @@ def lihat_data_lahan(conn) -> dict[str, Any]:
     )
     petani = cursor.fetchall()
 
-    # 2. Ambil semua lahan + surveyor + alamat (kalau ada)
+    # 2. Ambil semua lahan + petani + surveyor + alamat
     cursor.execute(
         """
         SELECT
             l.lahan_id,
             l.ketinggian,
-            u_surveyor.user_id   AS surveyor_id,
-            u_surveyor.name      AS nama_surveyor,
+
+            u_p.user_id        AS petani_id,
+            u_p.name           AS nama_petani,
+
+            u_s.user_id        AS surveyor_id,
+            u_s.name           AS nama_surveyor,
+
             a.alamat_id,
             a.nama_jalan,
             kc.nama_kecamatan,
             k.nama_kota,
             p.nama_provinsi
         FROM lahan l
-        LEFT JOIN users u_surveyor   ON u_surveyor.user_id = l.id_user_surveyor
-        LEFT JOIN alamat a           ON a.alamat_id = l.id_alamat
-        LEFT JOIN kecamatan kc       ON kc.kecamatan_id = a.id_kecamatan
-        LEFT JOIN kota k             ON k.kota_id = a.id_kota
-        LEFT JOIN provinsi p         ON p.provinsi_id = a.id_provinsi
+        LEFT JOIN users u_p       ON u_p.user_id    = l.id_user_petani
+        LEFT JOIN users u_s       ON u_s.user_id    = l.id_user_surveyor
+        LEFT JOIN alamat a        ON a.alamat_id    = l.id_alamat
+        LEFT JOIN kecamatan kc    ON kc.kecamatan_id = a.id_kecamatan
+        LEFT JOIN kota k          ON k.kota_id      = a.id_kota
+        LEFT JOIN provinsi p      ON p.provinsi_id  = a.id_provinsi
         ORDER BY l.lahan_id;
         """
     )
     lahan = cursor.fetchall()
 
-    # 3. Ambil semua survey_data + iklim + tanah + tanaman + petani
+    # 3. Ambil semua survey_data + iklim + tanah + tanaman + petani (via lahan)
     cursor.execute(
         """
         SELECT
             sd.survey_id,
             sd.id_lahan,
+
             sd.id_user_surveyor,
             us.name               AS nama_surveyor,
+
             sd.id_user_admin,
             ua.name               AS nama_admin,
+
             sd.status_survey,
             sd.tanggal_survey,
 
@@ -208,15 +300,17 @@ def lihat_data_lahan(conn) -> dict[str, Any]:
 
             sd.id_tanaman,
             t.nama                AS nama_tanaman,
-            up.user_id            AS petani_id,
-            up.name               AS nama_petani
+
+            u_p.user_id           AS petani_id,
+            u_p.name              AS nama_petani
         FROM survey_data sd
         LEFT JOIN users us          ON us.user_id = sd.id_user_surveyor
         LEFT JOIN users ua          ON ua.user_id = sd.id_user_admin
         LEFT JOIN iklim ik          ON ik.iklim_id = sd.id_iklim
         LEFT JOIN kondisi_tanah kt  ON kt.kondisi_tanah_id = sd.id_tanah
         LEFT JOIN tanaman t         ON t.tanaman_id = sd.id_tanaman
-        LEFT JOIN users up          ON up.user_id = t.id_user
+        LEFT JOIN lahan l           ON l.lahan_id = sd.id_lahan
+        LEFT JOIN users u_p         ON u_p.user_id = l.id_user_petani
         ORDER BY sd.survey_id;
         """
     )
