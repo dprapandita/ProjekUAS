@@ -1,6 +1,7 @@
 from core.admin_functions import read_all_users, delete_user, lihat_data_lahan, get_user_by_id, update_user_profile
 from core.analysis import add_lahan, add_tanaman, add_survey_data, lihat_lahan_universal, get_all_iklim, \
-    get_all_kondisi_tanah, get_all_tipe_tanaman, get_tanaman_by_tipe, lihat_hasil_survey_petani, buat_alamat
+    get_all_kondisi_tanah, get_all_tipe_tanaman, get_tanaman_by_tipe, lihat_hasil_survey_petani, buat_alamat, \
+    claim_lahan_for_surveyor
 from utils.address import pilih_alamat_baru
 from utils.header import header, clear_terminal
 from utils.dekorasi import display, input_optional
@@ -157,12 +158,12 @@ def menu_petani(conn, user):
                 print("⚠️ Gagal menambahkan lahan.")
             enter_break()
 
-        elif pilihan == "3":
-            lihat_hasil_survey_petani(conn, user)
-            enter_break()
-
         elif pilihan == "2":
             lihat_lahan_universal(conn, user)
+            enter_break()
+
+        elif pilihan == "3":
+            lihat_hasil_survey_petani(conn, user)
             enter_break()
 
         elif pilihan == "4":
@@ -206,6 +207,12 @@ def menu_surveyor(conn, user):
                 lahan_id = int(input("ID lahan yang disurvey: ").strip())
             except ValueError:
                 print("ID lahan harus angka.")
+                enter_break()
+                continue
+
+            claim = claim_lahan_for_surveyor(conn, lahan_id, surveyor_id)
+            if not claim:
+                print("⚠️ Lahan ini sudah diambil surveyor lain atau tidak ada.")
                 enter_break()
                 continue
 

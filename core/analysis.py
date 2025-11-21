@@ -30,9 +30,6 @@ def add_lahan(
 
 
 def lihat_lahan_universal(conn, user: dict[str, Any]) -> list[tuple[Any, ...]]:
-    """
-    user = {"id": user_id, "role": "admin"|"petani"|"surveyor"}
-    """
     role = user["role"].lower()
     user_id = user["id"]
 
@@ -42,64 +39,69 @@ def lihat_lahan_universal(conn, user: dict[str, Any]) -> list[tuple[Any, ...]]:
                 """
                 SELECT
                     l.lahan_id,
-                    u_s.name      AS nama_surveyor,
+                    u_p.name        AS nama_petani,
+                    u_s.user_id     AS surveyor_id,
+                    u_s.name        AS nama_surveyor,
                     l.ketinggian,
                     a.nama_jalan,
                     kc.nama_kecamatan,
                     kt.nama_kota,
                     p.nama_provinsi
                 FROM lahan l
-                LEFT JOIN users u_s      ON u_s.user_id      = l.id_user_surveyor
-                LEFT JOIN alamat a       ON a.alamat_id      = l.id_alamat
-                LEFT JOIN kecamatan kc   ON kc.kecamatan_id  = a.id_kecamatan
-                LEFT JOIN kota kt        ON kt.kota_id       = a.id_kota
-                LEFT JOIN provinsi p     ON p.provinsi_id    = a.id_provinsi
-                WHERE l.id_user_surveyor = %s
+                LEFT JOIN users u_p       ON u_p.user_id      = l.id_user_petani
+                LEFT JOIN users u_s       ON u_s.user_id      = l.id_user_surveyor
+                LEFT JOIN alamat a        ON a.alamat_id      = l.id_alamat
+                LEFT JOIN kecamatan kc    ON kc.kecamatan_id  = a.id_kecamatan
+                LEFT JOIN kota kt         ON kt.kota_id       = a.id_kota
+                LEFT JOIN provinsi p      ON p.provinsi_id    = a.id_provinsi
                 ORDER BY l.lahan_id;
-                """,
-                (user_id,),
+                """
             )
-
         elif role == "petani":
             cur.execute(
                 """
                 SELECT
                     l.lahan_id,
-                    u_s.name      AS nama_surveyor,
+                    u_p.name        AS nama_petani,
+                    u_s.user_id     AS surveyor_id,
+                    u_s.name        AS nama_surveyor,
                     l.ketinggian,
                     a.nama_jalan,
                     kc.nama_kecamatan,
                     kt.nama_kota,
                     p.nama_provinsi
                 FROM lahan l
-                LEFT JOIN users u_s      ON u_s.user_id      = l.id_user_surveyor
-                LEFT JOIN alamat a       ON a.alamat_id      = l.id_alamat
-                LEFT JOIN kecamatan kc   ON kc.kecamatan_id  = a.id_kecamatan
-                LEFT JOIN kota kt        ON kt.kota_id       = a.id_kota
-                LEFT JOIN provinsi p     ON p.provinsi_id    = a.id_provinsi
-                WHERE l.id_user_petani   = %s
+                LEFT JOIN users u_p       ON u_p.user_id      = l.id_user_petani
+                LEFT JOIN users u_s       ON u_s.user_id      = l.id_user_surveyor
+                LEFT JOIN alamat a        ON a.alamat_id      = l.id_alamat
+                LEFT JOIN kecamatan kc    ON kc.kecamatan_id  = a.id_kecamatan
+                LEFT JOIN kota kt         ON kt.kota_id       = a.id_kota
+                LEFT JOIN provinsi p      ON p.provinsi_id    = a.id_provinsi
+                WHERE l.id_user_petani = %s
                 ORDER BY l.lahan_id;
                 """,
                 (user_id,),
             )
-
         else:  # admin
             cur.execute(
                 """
                 SELECT
                     l.lahan_id,
-                    u_s.name      AS nama_surveyor,
+                    u_p.name        AS nama_petani,
+                    u_s.user_id     AS surveyor_id,
+                    u_s.name        AS nama_surveyor,
                     l.ketinggian,
                     a.nama_jalan,
                     kc.nama_kecamatan,
                     kt.nama_kota,
                     p.nama_provinsi
                 FROM lahan l
-                LEFT JOIN users u_s      ON u_s.user_id      = l.id_user_surveyor
-                LEFT JOIN alamat a       ON a.alamat_id      = l.id_alamat
-                LEFT JOIN kecamatan kc   ON kc.kecamatan_id  = a.id_kecamatan
-                LEFT JOIN kota kt        ON kt.kota_id       = a.id_kota
-                LEFT JOIN provinsi p     ON p.provinsi_id    = a.id_provinsi
+                LEFT JOIN users u_p       ON u_p.user_id      = l.id_user_petani
+                LEFT JOIN users u_s       ON u_s.user_id      = l.id_user_surveyor
+                LEFT JOIN alamat a        ON a.alamat_id      = l.id_alamat
+                LEFT JOIN kecamatan kc    ON kc.kecamatan_id  = a.id_kecamatan
+                LEFT JOIN kota kt         ON kt.kota_id       = a.id_kota
+                LEFT JOIN provinsi p      ON p.provinsi_id    = a.id_provinsi
                 ORDER BY l.lahan_id;
                 """
             )
@@ -112,6 +114,8 @@ def lihat_lahan_universal(conn, user: dict[str, Any]) -> list[tuple[Any, ...]]:
     else:
         for (
             lahan_id,
+            nama_petani,
+            surveyor_id,
             nama_surveyor,
             ketinggian,
             nama_jalan,
@@ -119,10 +123,15 @@ def lihat_lahan_universal(conn, user: dict[str, Any]) -> list[tuple[Any, ...]]:
             nama_kota,
             nama_provinsi,
         ) in rows:
+            if surveyor_id is None:
+                status = "BELUM DIAMBIL"
+            else:
+                status = f"SUDAH DIAMBIL oleh {nama_surveyor}"
+
             print(
-                f"- ID: {lahan_id} | Surveyor: {nama_surveyor} | "
+                f"- ID: {lahan_id} | Petani: {nama_petani} | "
                 f"Ketinggian: {ketinggian} | Alamat: {nama_jalan}, "
-                f"{nama_kecamatan}, {nama_kota}, {nama_provinsi}"
+                f"{nama_kecamatan}, {nama_kota}, {nama_provinsi} | Status: {status}"
             )
 
     return rows
@@ -220,6 +229,34 @@ def add_survey_data(
         row = cur.fetchone()
         conn.commit()
         return row[0] if row else None
+
+
+def claim_lahan_for_surveyor(
+    conn,
+    lahan_id: int,
+    surveyor_id: int,
+) -> bool:
+    """
+    Coba klaim lahan untuk surveyor.
+    Hanya berhasil kalau id_user_surveyor masih NULL.
+    Return True kalau berhasil, False kalau gagal (sudah diambil orang lain).
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE lahan
+            SET id_user_surveyor = %s
+            WHERE lahan_id = %s
+              AND id_user_surveyor IS NULL;
+            """,
+            (surveyor_id, lahan_id),
+        )
+        if cur.rowcount == 0:
+            conn.rollback()
+            return False
+
+        conn.commit()
+        return True
 
 
 def buat_alamat(conn) -> int | None:

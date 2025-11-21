@@ -6,18 +6,8 @@ CREATE TABLE users (
     email     VARCHAR(100),
     no_telp   VARCHAR(20),
     alamat VARCHAR(200) NULL,
+    role VARCHAR(50) NOT NULL,
     pembuatan TIMESTAMP default now()::DATE
-);
-
-CREATE TABLE roles (
-    role_id    SERIAL PRIMARY KEY,
-    nama_role  VARCHAR(50) UNIQUE NOT NULL
-);
-
-CREATE TABLE user_roles (
-    user_role_id SERIAL PRIMARY KEY,
-    id_user      INTEGER REFERENCES users(user_id),
-    id_role      INTEGER REFERENCES roles(role_id)
 );
 
 CREATE TABLE lahan (
@@ -31,15 +21,11 @@ CREATE TABLE lahan (
     kelembapan FLOAT,
     pembuatan TIMESTAMP default now()::DATE
 );
-CREATE TABLE tipe_tanaman (
-    tipe_tanaman_id SERIAL PRIMARY KEY,
-    jenis_tanaman   VARCHAR(50) NOT NULL
-);
 
 CREATE TABLE tanaman (
     tanaman_id      SERIAL PRIMARY KEY,
     nama            VARCHAR(100) NOT NULL,
-    id_tipe_tanaman INTEGER REFERENCES tipe_tanaman(tipe_tanaman_id)
+    tipe_tanaman    VARCHAR(100) NOT NULL
 );
 
 CREATE TABLE survey_data (

@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS iklim(
     jenis_cuaca VARCHAR(20) NOT NULL
 );
 
+INSERT INTO iklim(jenis_cuaca) VALUES ('kemarau');
+INSERT INTO iklim(jenis_cuaca) VALUES ('penghujan');
+
 CREATE TABLE IF NOT EXISTS kondisi_tanah(
     kondisi_tanah_id SERIAL PRIMARY KEY,
     kondisi_tanah VARCHAR(20) NOT NULL,
@@ -56,6 +59,13 @@ CREATE TABLE IF NOT EXISTS kondisi_tanah(
     kandungan_nutrisi FLOAT NOT NULL,
     kelembapan FLOAT NOT NULL
 );
+
+INSERT INTO kondisi_tanah (kondisi_tanah, ph, kandungan_nutrisi, kelembapan) VALUES
+  ('Sangat Subur', 6.5, 0.9, 75),
+  ('Subur',        6.0, 0.7, 65),
+  ('Sedang',       5.5, 0.5, 55),
+  ('Kering',       7.0, 0.3, 35),
+  ('Asam',         4.5, 0.4, 60);
 
 -- Insert data default
 INSERT INTO users (name, username, password) VALUES
