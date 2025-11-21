@@ -11,7 +11,6 @@ def enter_break():
     input("\nTekan Enter untuk lanjut...")
 
 
-
 def menu_admin(conn, user):
     """
     Menu untuk role admin:
@@ -82,14 +81,64 @@ def menu_admin(conn, user):
                 )
 
             print("\n=== Data Lahan ===")
-            for lahan_id, petani_id, tanah, ketinggian, iklim, tanggal in data_lahan:
+            for (
+                    lahan_id,
+                    ketinggian,
+                    petani_id,
+                    nama_petani,
+                    surveyor_id,
+                    nama_surveyor,
+                    alamat_id,
+                    nama_jalan,
+                    nama_kecamatan,
+                    nama_kota,
+                    nama_provinsi,
+            ) in data_lahan:
                 print(
-                    f"- Lahan {lahan_id} | Petani {petani_id} | Iklim: {iklim} | Tanah: {tanah} | Ketinggian: {ketinggian} | Tgl: {tanggal}")
+                    f"- Lahan {lahan_id} | Petani: {nama_petani} (ID {petani_id}) | "
+                    f"Surveyor: {nama_surveyor or '-'} (ID {surveyor_id or '-'}) | "
+                    f"Ketinggian: {ketinggian} | Alamat: {nama_jalan}, "
+                    f"{nama_kecamatan}, {nama_kota}, {nama_provinsi}"
+                )
 
             print("\n=== Data Survey ===")
-            for survey_id, lahan_id, surveyor_id, hasil, tanggal in data_survey:
+            for (
+                    survey_id,
+                    id_lahan,
+                    id_user_surveyor,
+                    nama_surveyor,
+                    id_user_admin,
+                    nama_admin,
+                    status_survey,
+                    tanggal_survey,
+                    id_iklim,
+                    jenis_cuaca,
+                    id_tanah,
+                    kondisi_tanah,
+                    ph,
+                    kandungan_nutrisi,
+                    kelembapan,
+                    id_tanaman,
+                    nama_tanaman,
+                    petani_id,
+                    nama_petani,
+            ) in data_survey:
+                print(f"- Survey {survey_id} | Lahan {id_lahan} | Petani: {nama_petani} (ID {petani_id})")
                 print(
-                    f"- Survey {survey_id} | Lahan {lahan_id} | Surveyor {surveyor_id} | Hasil: {hasil} | Tgl: {tanggal}")
+                    f"  Surveyor : {nama_surveyor or '-'} (ID {id_user_surveyor or '-'}) | "
+                    f"Admin: {nama_admin or '-'}"
+                )
+                print(
+                    f"  Status   : {status_survey} | Tanggal: {tanggal_survey}"
+                )
+                print(
+                    f"  Iklim    : {jenis_cuaca} | Tanah: {kondisi_tanah} "
+                    f"(pH={ph}, Nutrisi={kandungan_nutrisi}, Kelembapan={kelembapan})"
+                )
+                if id_tanaman:
+                    print(f"  Tanaman  : {nama_tanaman} (ID {id_tanaman})")
+                else:
+                    print("  Tanaman  : -")
             enter_break()
 
         elif pilihan == "0":
@@ -130,7 +179,6 @@ def menu_petani(conn, user):
 
             mode = input("1. Pilih alamat yang sudah ada\n2. Buat alamat baru\nPilih: ").strip()
 
-            id_alamat = None
             if mode == "1":
                 id_alamat = pilih_alamat_baru(conn)
             elif mode == "2":
@@ -211,6 +259,7 @@ def menu_surveyor(conn, user):
                 continue
 
             claim = claim_lahan_for_surveyor(conn, lahan_id, surveyor_id)
+
             if not claim:
                 print("⚠️ Lahan ini sudah diambil surveyor lain atau tidak ada.")
                 enter_break()
