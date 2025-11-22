@@ -60,13 +60,6 @@ CREATE TABLE IF NOT EXISTS kondisi_tanah(
     kelembapan FLOAT NOT NULL
 );
 
-INSERT INTO kondisi_tanah (kondisi_tanah, ph, kandungan_nutrisi, kelembapan) VALUES
-  ('Sangat Subur', 6.5, 0.9, 75),
-  ('Subur',        6.0, 0.7, 65),
-  ('Sedang',       5.5, 0.5, 55),
-  ('Kering',       7.0, 0.3, 35),
-  ('Asam',         4.5, 0.4, 60);
-
 -- Insert data default
 INSERT INTO users (name, username, password) VALUES
 ('Admin Ejak', 'ejak', '23'),
@@ -135,7 +128,6 @@ INSERT INTO tanaman (id_tipe_tanaman, nama) VALUES
 
 CREATE TABLE IF NOT EXISTS survey_data (
     survey_id SERIAL PRIMARY KEY,
-    nama_tanaman VARCHAR(50),
     id_user_surveyor INTEGER REFERENCES users(user_id),
     id_user_admin INTEGER REFERENCES users(user_id),
     id_lahan INTEGER REFERENCES lahan(lahan_id),
