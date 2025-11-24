@@ -1,0 +1,23 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="numpy" />
+          <option value="typing-extensions" />
+          <option value="opencv-python" />
+          <option value="cv2_enumerate_cameras" />
+          <option value="onnx" />
+          <option value="insightface" />
+          <option value="psutil" />
+          <option value="tk" />
+          <option value="customtkinter" />
+          <option value="pillow" />
+          <option value="opennsfw2" />
+          <option value="protobuf" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>

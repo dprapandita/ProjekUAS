@@ -1,13 +1,11 @@
 import os
 import shutil
-import subprocess
-import sys
 from datetime import date
 from typing import Optional, Any
 
 import psycopg2
-from psycopg2.extensions import connection
 from colorama import Fore, Style, init as colorama_init
+from psycopg2.extensions import connection
 from pyfiglet import Figlet
 
 # Database Connection
