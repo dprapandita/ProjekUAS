@@ -13,6 +13,7 @@ from pyfiglet import Figlet
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'postgres',
+    'port': '5400',
     'password': '1234',
     'database': 'projekuasrev',
 }
@@ -104,24 +105,7 @@ def clear_terminal():
         # Fallback sederhana jika os.system tidak tersedia/ditolak
         print("\n" * 100)
 
-# ==========================================
-# UTILS: DEKORASI
-# ==========================================
-
-def input_angka(prompt, tipe=float) -> float | int:
-    """
-    Inputan angka dengan tipe berubah-ubah
-    :param prompt:
-    :param tipe:
-    :return float | int:
-    """
-    while True:
-        nilai = input(prompt).strip()
-        try:
-            return tipe(nilai)
-        except (ValueError, AttributeError):
-            print("Input harus angka, coba lagi.\n")
-
+# Dekorasi
 
 def display(value, fallback="-"):
     return value if value is not None else fallback
@@ -134,9 +118,7 @@ def input_optional(prompt: str, default: str | None = None) -> str | None:
     val = input(prompt).strip()
     return val if val else default
 
-# ==========================================
-# UTILS: ADDRESS
-# ==========================================
+# Alamat
 
 ALAMAT_MASTER_CONFIG = {
     "provinsi":  ("provinsi",  "provinsi_id",  "nama_provinsi"),
@@ -334,9 +316,7 @@ def get_all_alamat_master(conn, jenis: str) -> list[tuple[int, str]]:
     table, id_col, nama_col = ALAMAT_MASTER_CONFIG[jenis]
     return get_all_master(conn, table, id_col, nama_col)
 
-# ==========================================
-# CORE: ADMIN FUNCTIONS
-# ==========================================
+# Fungsi admin
 
 def add_user(
         conn,
@@ -659,9 +639,28 @@ def lihat_data_lahan(conn) -> dict[str, Any]:
         "survey_data": survey_data,
     }
 
-# ==========================================
-# CORE: ANALYSIS
-# ==========================================
+# Analysis
+
+def delete_lahan(conn, lahan_id: int) -> bool:
+    """
+    Hapus lahan berdasarkan lahan_id.
+    Hapus dulu survey_data yang terkait, baru hapus lahan.
+    """
+    with conn.cursor() as cur:
+        # Cek keberadaan lahan
+        cur.execute("SELECT 1 FROM lahan WHERE lahan_id = %s", (lahan_id,))
+        if not cur.fetchone():
+            print(f"Lahan ID {lahan_id} tidak ditemukan.")
+            return False
+
+        # Hapus survey_data terkait
+        cur.execute("DELETE FROM survey_data WHERE id_lahan = %s", (lahan_id,))
+        
+        # Hapus lahan
+        cur.execute("DELETE FROM lahan WHERE lahan_id = %s", (lahan_id,))
+        conn.commit()
+        return True
+
 
 def add_lahan(
     conn,
@@ -705,7 +704,8 @@ def lihat_lahan_universal(conn, user: dict[str, Any]) -> list[tuple[Any, ...]]:
                     a.nama_jalan,
                     kc.nama_kecamatan,
                     kt.nama_kota,
-                    p.nama_provinsi
+                    p.nama_provinsi,
+                    (SELECT COUNT(*) FROM survey_data sd WHERE sd.id_lahan = l.lahan_id) AS survey_count
                 FROM lahan l
                 LEFT JOIN users u_p       ON u_p.user_id      = l.id_user_petani
                 LEFT JOIN users u_s       ON u_s.user_id      = l.id_user_surveyor
@@ -728,7 +728,8 @@ def lihat_lahan_universal(conn, user: dict[str, Any]) -> list[tuple[Any, ...]]:
                     a.nama_jalan,
                     kc.nama_kecamatan,
                     kt.nama_kota,
-                    p.nama_provinsi
+                    p.nama_provinsi,
+                    (SELECT COUNT(*) FROM survey_data sd WHERE sd.id_lahan = l.lahan_id) AS survey_count
                 FROM lahan l
                 LEFT JOIN users u_p       ON u_p.user_id      = l.id_user_petani
                 LEFT JOIN users u_s       ON u_s.user_id      = l.id_user_surveyor
@@ -753,7 +754,8 @@ def lihat_lahan_universal(conn, user: dict[str, Any]) -> list[tuple[Any, ...]]:
                     a.nama_jalan,
                     kc.nama_kecamatan,
                     kt.nama_kota,
-                    p.nama_provinsi
+                    p.nama_provinsi,
+                    (SELECT COUNT(*) FROM survey_data sd WHERE sd.id_lahan = l.lahan_id) AS survey_count
                 FROM lahan l
                 LEFT JOIN users u_p       ON u_p.user_id      = l.id_user_petani
                 LEFT JOIN users u_s       ON u_s.user_id      = l.id_user_surveyor
@@ -781,6 +783,7 @@ def lihat_lahan_universal(conn, user: dict[str, Any]) -> list[tuple[Any, ...]]:
             nama_kecamatan,
             nama_kota,
             nama_provinsi,
+            survey_count,
         ) in rows:
             if surveyor_id is None:
                 status = "BELUM DIAMBIL"
@@ -790,7 +793,8 @@ def lihat_lahan_universal(conn, user: dict[str, Any]) -> list[tuple[Any, ...]]:
             print(
                 f"- ID: {lahan_id} | Petani: {nama_petani} | "
                 f"Ketinggian: {ketinggian} | Alamat: {nama_jalan}, "
-                f"{nama_kecamatan}, {nama_kota}, {nama_provinsi} | Status: {status}"
+                f"{nama_kecamatan}, {nama_kota}, {nama_provinsi} | Status Survey: {status} | "
+                f"Sudah disurvey selama: {survey_count} hari"
             )
 
     return rows
@@ -800,9 +804,15 @@ def add_tanaman(
     conn,
     id_tipe_tanaman: int,
     nama_tanaman: str,
+    ketinggian: float,
+    ph: float,
+    kandungan_nutrisi: float,
+    kondisi_tanah: str,
+    iklim_id: int,
+    kelembapan: float,  
 ) -> Optional[int]:
     """
-    Tambah tanaman ke tabel tanaman (schema: id_tipe_tanaman, nama).
+    Tambah tanaman ke tabel tanaman dengan data lingkungan lengkap.
     """
     with conn.cursor() as cur:
         cur.execute(
@@ -822,11 +832,17 @@ def add_tanaman(
 
         cur.execute(
             """
-            INSERT INTO tanaman (id_tipe_tanaman, nama)
-            VALUES (%s, %s)
+            INSERT INTO tanaman (
+                id_tipe_tanaman, nama, ketinggian, ph, 
+                kandungan_nutrisi, kondisi_tanah, iklim_id, kelembapan
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING tanaman_id;
             """,
-            (id_tipe_tanaman, nama_tanaman),
+            (
+                id_tipe_tanaman, nama_tanaman, ketinggian, ph, 
+                kandungan_nutrisi, kondisi_tanah, iklim_id, kelembapan
+            ),
         )
         row = cur.fetchone()
         conn.commit()
@@ -835,6 +851,37 @@ def add_tanaman(
         if tanaman_id is not None:
             print(f"Tanaman '{nama_tanaman}' (ID {tanaman_id}) berhasil disimpan.")
         return tanaman_id
+
+
+def delete_tanaman(conn, tanaman_id: int) -> bool:
+    """
+    Hapus tanaman berdasarkan tanaman_id.
+    Cek dulu apakah dipakai di survey_data.
+    """
+    with conn.cursor() as cur:
+        # Cek apakah dipakai
+        cur.execute("SELECT 1 FROM survey_data WHERE id_tanaman = %s", (tanaman_id,))
+        if cur.fetchone():
+            print(f"Tanaman ID {tanaman_id} sedang digunakan dalam data survey. Tidak bisa dihapus.")
+            return False
+
+        cur.execute("DELETE FROM tanaman WHERE tanaman_id = %s", (tanaman_id,))
+        if cur.rowcount > 0:
+            conn.commit()
+            return True
+        else:
+            print(f"Tanaman ID {tanaman_id} tidak ditemukan.")
+            return False
+
+
+def get_survey_count(conn, lahan_id: int) -> int:
+    """
+    Hitung berapa kali surveyor melakukan survey.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM survey_data WHERE id_lahan = %s", (lahan_id,))
+        row = cur.fetchone()
+        return row[0] if row else 0
 
 
 def add_survey_data(
@@ -990,9 +1037,9 @@ def hitung_rata_tanah_3_hari_terakhir(conn, lahan_id: int):
         return None
 
     return {
-        "ph": row['ph_avg'],
-        "nutrisi": row['nutrisi_avg'],
-        "kelembapan": row['kelembapan_avg'],
+        "ph": row[0],
+        "nutrisi": row[1],
+        "kelembapan": row[2],
     }
 
 
@@ -1124,33 +1171,27 @@ def lihat_hasil_survey_petani(conn, user: dict[str, Any]) -> list[tuple[Any, ...
             l.lahan_id,
             l.ketinggian,
 
-            -- pemilik lahan (petani)
             u_petani.user_id      AS petani_id,
             u_petani.name         AS nama_petani,
 
-            -- surveyor yang menganalisis
             u_surveyor.user_id    AS surveyor_id,
             u_surveyor.name       AS nama_surveyor,
 
-            -- alamat lahan
             a.nama_jalan,
             kc.nama_kecamatan,
             k.nama_kota,
             p.nama_provinsi,
 
-            -- data survey
             sd.survey_id,
             sd.tanggal_survey,
             sd.status_survey,
 
-            -- iklim & tanah
             ik.jenis_cuaca,
             ktan.kondisi_tanah,
             ktan.ph,
             ktan.kandungan_nutrisi,
             ktan.kelembapan,
 
-            -- tanaman (kalau surveyor pilih dari master)
             t.tanaman_id,
             t.nama              AS nama_tanaman_master
             
@@ -1169,7 +1210,8 @@ def lihat_hasil_survey_petani(conn, user: dict[str, Any]) -> list[tuple[Any, ...
         LEFT JOIN tanaman t          ON t.tanaman_id          = sd.id_tanaman
 
         WHERE l.id_user_petani = %s
-        ORDER BY l.lahan_id, sd.tanggal_survey DESC, sd.survey_id;
+        ORDER BY l.lahan_id, sd.survey_id DESC
+        LIMIT 3;
     """
 
     with conn.cursor() as cur:
@@ -1180,7 +1222,7 @@ def lihat_hasil_survey_petani(conn, user: dict[str, Any]) -> list[tuple[Any, ...
         print("\nBelum ada hasil survey untuk lahan kamu.")
         return rows
 
-    print("\n=== HASIL ANALISIS (SURVEY) LAHAN SAYA ===")
+    print("\n=== HASIL SURVEY SELAMA 3 HARI TERAKHIR LAHAN SAYA ===")
     current_lahan = None
     for row in rows:
         (
@@ -1206,7 +1248,6 @@ def lihat_hasil_survey_petani(conn, user: dict[str, Any]) -> list[tuple[Any, ...
             nama_tanaman_master
         ) = row
 
-        # biar per-lahan ngelompok, kasih header kalau ganti lahan_id
         if current_lahan != lahan_id:
             current_lahan = lahan_id
             print("\n----------------------------------------")
@@ -1219,7 +1260,6 @@ def lihat_hasil_survey_petani(conn, user: dict[str, Any]) -> list[tuple[Any, ...
             )
             print("  Survey:")
 
-        # nama tanaman: ambil dari master kalau ada, kalau nggak, pakai yang manual
         if nama_tanaman_master:
             rekom_tanaman = f"{nama_tanaman_master} (ID {tanaman_id})"
         else:
@@ -1228,6 +1268,7 @@ def lihat_hasil_survey_petani(conn, user: dict[str, Any]) -> list[tuple[Any, ...
         print(f"    • Survey ID    : {survey_id}")
         print(f"      Oleh         : {nama_surveyor} (ID {surveyor_id})")
         print(f"      Tgl Survey   : {tanggal_survey}")
+        print(f"      Alamat       : {nama_jalan}, {nama_kecamatan}, {nama_kota}, {nama_provinsi}")
         print(f"      Status       : {status_survey}")
         print(f"      Iklim        : {jenis_cuaca}")
         print(
@@ -1299,9 +1340,7 @@ def get_all_kondisi_tanah(conn) -> list[tuple[Any, ...]]:
         )
         return cur.fetchall()
 
-# ==========================================
-# UTILS: MENUS
-# ==========================================
+# Menu menu
 
 def enter_break():
     input("\nTekan Enter untuk lanjut...")
@@ -1313,6 +1352,9 @@ def menu_admin(conn, user):
     - Hapus users
     - Lihat users
     - Lihat data lahan
+    - Hapus lahan
+    - Input tanaman
+    - Hapus tanaman
     """
 
     while True:
@@ -1322,6 +1364,9 @@ def menu_admin(conn, user):
         print("1. Hapus user")
         print("2. Lihat user")
         print("3. Lihat data lahan")
+        print("4. Hapus lahan")
+        print("5. Input tanaman")
+        print("6. Hapus tanaman")
         print("0. Logout")
 
         pilihan = input("Pilih menu: ").strip()
@@ -1437,6 +1482,100 @@ def menu_admin(conn, user):
                     print("  Tanaman  : -")
             enter_break()
 
+        elif pilihan == "4":
+            print("\n=== Hapus Lahan ===")
+            try:
+                lahan_id = int(input("Masukkan ID Lahan yang akan dihapus: "))
+                yakin = input(f"Yakin hapus lahan {lahan_id}? (y/n): ").lower()
+                if yakin == 'y':
+                    if delete_lahan(conn, lahan_id):
+                        print(f"✅ Lahan {lahan_id} berhasil dihapus.")
+                    else:
+                        print("⚠️ Gagal menghapus lahan.")
+                else:
+                    print("Batal.")
+            except ValueError:
+                print("ID harus angka.")
+            enter_break()
+
+        elif pilihan == "5":
+            print("\n=== Input Tanaman Baru ===")
+            print("Panduan Range:")
+            print("- Ketinggian: 0-3000 mdpl")
+            print("- pH: 0-14")
+            print("- Nutrisi: 0-100")
+            print("- Kelembapan: 0-100")
+
+            tipe_list = get_all_tipe_tanaman(conn)
+            if not tipe_list:
+                print("Belum ada data tipe_tanaman.")
+            else:
+                print("\nTipe Tanaman:")
+                for tipe_id, jenis in tipe_list:
+                    print(f"  {tipe_id}. {jenis}")
+
+                try:
+                    id_tipe = int(input("ID Tipe Tanaman: ").strip())
+                    nama_tanaman = input("Nama tanaman: ").strip()
+                    
+                    if not nama_tanaman:
+                        print("Nama tanaman tidak boleh kosong.")
+                        enter_break()
+                        continue
+
+                    # Input data lingkungan
+                    ketinggian = float(input("Ketinggian (mdpl): ").strip())
+                    ph = float(input("pH (0-14): ").strip())
+                    nutrisi = float(input("Nutrisi (0-100): ").strip())
+                    kelembapan = float(input("Kelembapan (0-100): ").strip())
+                    
+                    # Pilih iklim
+                    iklim_list = get_all_iklim(conn)
+                    print("\nPilih Iklim:")
+                    for i_id, i_jenis in iklim_list:
+                        print(f"  {i_id}. {i_jenis}")
+                    iklim_id = int(input("ID Iklim: ").strip())
+
+                    # Kondisi tanah (string bebas atau enum, di sini string)
+                    kondisi_tanah = input("Kondisi Tanah (Gembur/Lumpur/dll): ").strip()
+
+                    res = add_tanaman(
+                        conn, 
+                        id_tipe_tanaman=id_tipe, 
+                        nama_tanaman=nama_tanaman,
+                        ketinggian=ketinggian,
+                        ph=ph,
+                        kandungan_nutrisi=nutrisi,
+                        kondisi_tanah=kondisi_tanah,
+                        iklim_id=iklim_id,
+                        kelembapan=kelembapan
+                    )
+                    
+                    if res:
+                        print(f"✅ Tanaman '{nama_tanaman}' berhasil ditambahkan.")
+                    else:
+                        print("⚠️ Gagal menambahkan tanaman.")
+                        
+                except ValueError:
+                    print("Input harus angka (untuk ID/Nilai).")
+            enter_break()
+
+        elif pilihan == "6":
+            print("\n=== Hapus Tanaman ===")
+            try:
+                tanaman_id = int(input("Masukkan ID Tanaman yang akan dihapus: "))
+                yakin = input(f"Yakin hapus tanaman {tanaman_id}? (y/n): ").lower()
+                if yakin == 'y':
+                    if delete_tanaman(conn, tanaman_id):
+                        print(f"✅ Tanaman {tanaman_id} berhasil dihapus.")
+                    else:
+                        print("⚠️ Gagal menghapus tanaman (mungkin sedang dipakai).")
+                else:
+                    print("Batal.")
+            except ValueError:
+                print("ID harus angka.")
+            enter_break()
+
         elif pilihan == "0":
             print("Logout dari admin.")
             break
@@ -1459,7 +1598,7 @@ def menu_petani(conn, user):
         print("1. Input lahan milik saya")
         print("2. Lihat lahan saya")
         print("3. Lihat hasil analisis di lahan saya")
-        print("4. Upate profile saya")
+        print("4. Update profile saya")
         print("0. Logout")
 
         pilihan = input("Pilih menu: ").strip()
@@ -1497,9 +1636,9 @@ def menu_petani(conn, user):
                 ketinggian=ketinggian,
             )
             if lahan_id is not None:
-                print(f"✅ Lahan dengan ID {lahan_id} berhasil ditambahkan.")
+                print(f"Lahan dengan ID {lahan_id} berhasil ditambahkan.")
             else:
-                print("⚠️ Gagal menambahkan lahan.")
+                print("Gagal menambahkan lahan.")
             enter_break()
 
         elif pilihan == "2":
@@ -1522,6 +1661,96 @@ def menu_petani(conn, user):
             enter_break()
 
 
+
+def update_lahan_ketinggian(conn, lahan_id: int, ketinggian: float) -> bool:
+    """
+    Update ketinggian lahan (diisi oleh surveyor).
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE lahan SET ketinggian = %s WHERE lahan_id = %s",
+            (ketinggian, lahan_id),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+
+
+def cocokin_tanaman(
+    conn,
+    ketinggian: float,
+    ph: float,
+    nutrisi: float,
+    kelembapan: float,
+    iklim_id: int
+) -> tuple[list[tuple], list[tuple]]:
+    """
+    Cari tanaman yang cocok berdasarkan kriteria.
+    Return: (recommended_plants, other_plants)
+    """
+    # Ambil semua tanaman
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT 
+                tanaman_id, 
+                nama, 
+                ketinggian, 
+                ph, 
+                kandungan_nutrisi, 
+                kelembapan, 
+                iklim_id
+            FROM tanaman
+        """)
+        all_plants = cur.fetchall()
+
+    recommended_scored: list[tuple[float, int, str]] = []
+    others_scored: list[tuple[float, int, str]] = []
+
+    for p in all_plants:
+        t_id, t_nama, t_h, t_ph, t_nut, t_hum, t_iklim = p
+
+        # Kalau ada nilai penting yang None, lempar ke others saja
+        if any(v is None for v in (t_h, t_ph, t_nut, t_hum, t_iklim)):
+            others_scored.append((0.0, t_id, t_nama))
+            continue
+
+        # Toleransi
+        match_h   = abs(ketinggian - t_h) <= 200       # mdpl
+        match_ph  = abs(ph - t_ph) <= 1.0              # pH
+        match_nut = abs(nutrisi - t_nut) <= 20         # persen/indeks
+        match_hum = abs(kelembapan - t_hum) <= 15      # persen
+        match_ik  = (iklim_id == t_iklim)
+
+        # Bobot tiap parameter (bisa kamu tweak)
+        score = 0.0
+        if match_ik:
+            score += 3.0   # iklim paling penting
+        if match_h:
+            score += 2.0
+        if match_ph:
+            score += 2.0
+        if match_nut:
+            score += 1.0
+        if match_hum:
+            score += 1.0
+
+        # Kriteria "recommended":
+        # - iklim harus match
+        # - skor minimal 5 dari total max 9
+        if match_ik and score >= 5.0:
+            recommended_scored.append((score, t_id, t_nama))
+        else:
+            others_scored.append((score, t_id, t_nama))
+
+    # Sort biar yang paling cocok di atas
+    recommended_scored.sort(reverse=True)
+    others_scored.sort(reverse=True)
+
+    recommended = [(t_id, t_nama) for score, t_id, t_nama in recommended_scored]
+    others = [(t_id, t_nama) for score, t_id, t_nama in others_scored]
+
+    return recommended, others 
+
+
 def menu_surveyor(conn, user):
     """
     Menu untuk role surveyor:
@@ -1535,18 +1764,16 @@ def menu_surveyor(conn, user):
         header()
         print(f"\n=== MENU SURVEYOR (Login sebagai: {user['username']}) ===")
         print("1. Survey lahan yang sudah ada")
-        print("2. Input tanaman baru")
-        print("3. Update profile saya")
+        print("2. Update profile saya")
         print("0. Logout")
 
         pilihan = input("Pilih menu: ").strip()
 
         # 1. SURVEY LAHAN
         if pilihan == "1":
-            # tampilkan lahan yang bisa diakses surveyor ini
             lihat_lahan_universal(conn, user)
 
-            print("\n=== Input survey ===")
+            print("\n=== Input survey data ===")
             try:
                 lahan_id = int(input("ID lahan yang disurvey: ").strip())
             except ValueError:
@@ -1555,12 +1782,24 @@ def menu_surveyor(conn, user):
                 continue
 
             claim = claim_lahan_for_surveyor(conn, lahan_id, surveyor_id)
-            print(f"Claim lahan {claim}")
-
             if not claim:
                 print("Lahan ini sudah diambil surveyor lain atau tidak ada.")
                 enter_break()
+                clear_terminal()
                 continue
+
+            print("- Ketinggian (0-3000)")
+            print("- pH (0-14)")
+            print("- Nutrisi (0-100)")
+            print("- Kelembapan (0-100)")
+            print("- Iklim")
+            # Input Ketinggian Real (Surveyor)
+            try:
+                real_ketinggian = int(input("Ketinggian Real Lahan (meter): ").strip())
+                update_lahan_ketinggian(conn, lahan_id, real_ketinggian)
+            except ValueError:
+                print("Ketinggian harus angka.")
+                real_ketinggian = 0
 
             # pilih iklim
             iklim_list = get_all_iklim(conn)
@@ -1581,10 +1820,10 @@ def menu_surveyor(conn, user):
                 continue
 
             # pilih kondisi tanah
-            kondisi_tanah = str(input("Kondisi tanah: ").strip())
-            ph = float(input("pH: ").strip())
-            nutrisi = float(input("Nutrisi: ").strip())
-            kelembapan = float(input("Kelembapan: ").strip())
+            kondisi_tanah = str(input("Kondisi tanah (gembur/lumpur/subur): ").strip())
+            ph = float(input("pH (misal: 6.0): ").strip())
+            nutrisi = float(input("Nutrisi (misal: 70): ").strip())
+            kelembapan = float(input("Kelembapan (misal: 60): ").strip())
 
             with conn.cursor() as cur:
                 cur.execute(
@@ -1603,61 +1842,82 @@ def menu_surveyor(conn, user):
                 continue
 
             id_tanah = row[0]
+            survey_count_before = get_survey_count(conn, lahan_id)
 
-            # optional: rekomendasikan tanaman
+            if survey_count_before <= 2:
+                survey_id = add_survey_data(
+                        conn=conn,
+                        id_lahan=lahan_id,
+                        id_user_surveyor=surveyor_id,
+                        id_user_admin=None,
+                        id_iklim=id_iklim,
+                        id_tanah=id_tanah,
+                        id_tanaman=None,
+                        status_survey="pengamatan"
+                    )
+                print(
+                    f"Data survey ke-{survey_count_before + 1} tersimpan. "
+                    "Rekomendasi tanaman akan muncul setelah 3 kali survey."
+                )
+                enter_break()
+                continue
+            
+            print("\n=== HASIL ANALISIS & REKOMENDASI ===")
+            recom, others = cocokin_tanaman(conn, real_ketinggian, ph, nutrisi, kelembapan, id_iklim)
+            
+            print(f"Kriteria: Alt={real_ketinggian}, pH={ph}, Nut={nutrisi}, Hum={kelembapan}, Iklim={id_iklim}")
+            
+            if recom:
+                print(f"\n✅ Tanaman SANGAT DIREKOMENDASIKAN ({len(recom)}):")
+                for r_id, r_nama in recom:
+                    print(f"  - ID {r_id}: {r_nama}")
+            else:
+                print("\n⚠️ Tidak ada tanaman yang pas 100% dengan kriteria.")
+
+            print(f"\nTanaman Lainnya ({len(others)}):")
+            # Tampilkan max 5 aja biar ga penuh
+            for o_id, o_nama in others[:5]:
+                print(f"  - ID {o_id}: {o_nama}")
+            if len(others) > 5:
+                print(f"  ... dan {len(others)-5} lainnya.")
+
             id_tanaman = None
-            nama_tanaman_manual = None
+            
+            print("\nOpsi:")
+            print("1. Pilih dari Rekomendasi")
+            print("2. Pilih dari Semua (Manual)")
+            print("3. Kosongkan (Tidak merekomendasikan)")
+            
+            sub_pilih = input("Pilih (1-3): ").strip()
 
-            jawab = input("\nIngin merekomendasikan tanaman dari daftar? (y/n): ").strip().lower()
-            if jawab == "y":
-                # pilih tipe tanaman
+            if sub_pilih == "1" and recom:
+                try:
+                    id_tanaman = int(input("Masukkan ID Tanaman Rekomendasi: "))
+                except ValueError: pass
+            elif sub_pilih == "2":
+                # Tampilkan semua tipe dulu (existing logic)
                 tipe_list = get_all_tipe_tanaman(conn)
-                if not tipe_list:
-                    print("Belum ada tipe_tanaman, isi dulu.")
-                    enter_break()
-                    continue
-
                 print("\nTipe Tanaman:")
                 for tipe_id, jenis in tipe_list:
                     print(f"  {tipe_id}. {jenis}")
-
                 try:
-                    id_tipe = int(input("ID Tipe Tanaman: ").strip())
-                except ValueError:
-                    print("ID tipe tanaman harus angka.")
-                    enter_break()
-                    continue
-
-                tanaman_list = get_tanaman_by_tipe(conn, id_tipe)
-                if not tanaman_list:
-                    print("Belum ada tanaman untuk tipe ini.")
-                else:
-                    print(f"\nTanaman (Tipe {id_tipe}):")
-                    for t_id, t_nama in tanaman_list:
+                    id_tipe = int(input("ID Tipe: "))
+                    t_list = get_tanaman_by_tipe(conn, id_tipe)
+                    for t_id, t_nama in t_list:
                         print(f"  {t_id}. {t_nama}")
-
-                    try:
-                        id_tanaman = int(input("ID Tanaman yang direkomendasikan: ").strip())
-                    except ValueError:
-                        print("ID tanaman harus angka.")
-                        enter_break()
-                        continue
-            else:
-                # kalau tidak pilih dari daftar, boleh isi nama bebas (opsional)
-                isi_manual = input("Ingin isi nama tanaman manual? (y/n): ").strip().lower()
-                if isi_manual == "y":
-                    nama_tanaman_manual = input("Nama tanaman: ").strip() or None
-
-            # simpan ke survey_data (ikut signature baru)
+                    id_tanaman = int(input("ID Tanaman: "))
+                except ValueError: pass
+            
+            # simpan ke survey_data
             survey_id = add_survey_data(
                 conn=conn,
                 id_lahan=lahan_id,
                 id_user_surveyor=surveyor_id,
-                id_user_admin=None,          # bisa diisi nanti oleh admin
+                id_user_admin=None,
                 id_iklim=id_iklim,
                 id_tanah=id_tanah,
                 id_tanaman=id_tanaman,
-                status_survey="waiting",
+                status_survey="selesai",
             )
 
             if survey_id is not None:
@@ -1665,47 +1925,12 @@ def menu_surveyor(conn, user):
                     f"✅ Survey baru dengan ID {survey_id} berhasil ditambahkan "
                     f"untuk lahan {lahan_id}."
                 )
+                
             else:
                 print("⚠️ Gagal menambahkan survey.")
             enter_break()
 
-        # 2. INPUT TANAMAN BARU
         elif pilihan == "2":
-            print("\n=== Input tanaman baru ===")
-
-            # pilih tipe tanaman
-            tipe_list = get_all_tipe_tanaman(conn)
-            if not tipe_list:
-                print("Belum ada data tipe_tanaman, isi dulu tabel tipe_tanaman.")
-                enter_break()
-                continue
-
-            print("\nTipe Tanaman:")
-            for tipe_id, jenis in tipe_list:
-                print(f"  {tipe_id}. {jenis}")
-
-            try:
-                id_tipe_tanaman = int(input("ID Tipe Tanaman: ").strip())
-            except ValueError:
-                print("ID tipe tanaman harus angka.")
-                enter_break()
-                continue
-
-            nama_tanaman = input("Nama tanaman: ").strip()
-            if not nama_tanaman:
-                print("Nama tanaman tidak boleh kosong.")
-                enter_break()
-                continue
-
-            tanaman_id = add_tanaman(conn, id_tipe_tanaman, nama_tanaman)
-
-            if tanaman_id is None:
-                print("⚠️ Tanaman sudah ada atau gagal ditambahkan.")
-            else:
-                print(f"✅ Tanaman berhasil ditambah dengan ID {tanaman_id}")
-            enter_break()
-
-        elif pilihan == "3":
             menu_update_profile(conn, user)
             enter_break()
 
@@ -1770,9 +1995,7 @@ def menu_update_profile(conn, user: dict[str, str | int]) -> None:
     else:
         print("⚠️ Tidak ada perubahan pada profil.")
 
-# ==========================================
-# CORE: AUTH
-# ==========================================
+# Authentikasi
 
 def signup(conn: psycopg2.extensions.connection) -> None:
     """
@@ -1909,15 +2132,14 @@ def login(conn: psycopg2.extensions.connection) -> Optional[dict[str, str | int]
         print("Login gagal! Username/password/role tidak cocok.")
         return None
 
-# ==========================================
-# MAIN EXECUTION
-# ==========================================
+# Main
 
 if __name__ == '__main__':
     conn = get_connection()
     clear_terminal()
     try:
         while True:
+            clear_terminal()
             header()
             print("1. Login")
             print("2. Registrasi user baru")
@@ -1945,6 +2167,7 @@ if __name__ == '__main__':
                 signup(conn)
             elif pilihan == "0":
                 print("Keluar dari program")
+                clear_terminal()
                 break
             else:
                 print("Pilihan tidak valid, coba lagi")

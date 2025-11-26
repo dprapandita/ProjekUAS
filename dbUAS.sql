@@ -69,14 +69,25 @@ INSERT INTO users (name, username, password) VALUES
 -- Insert roles
 INSERT INTO roles (nama_role) VALUES ('admin'), ('petani'), ('surveyor');
 
--- Penghubung user dan roles
+-- Admin Ejak
 INSERT INTO user_roles (id_user, id_role)
-SELECT u.user_id, r.role_id
-FROM users u
-JOIN roles r ON (
-    (u.username = 'ejak'  AND r.nama_role = 'admin') OR
-    (u.username = 'divo'  AND r.nama_role = 'petani') OR
-    (u.username = 'zera'  AND r.nama_role = 'surveyor')
+VALUES (
+    (SELECT user_id FROM users WHERE username = 'ejak'),
+    (SELECT role_id FROM roles WHERE nama_role = 'admin')
+);
+
+-- Petani Divo
+INSERT INTO user_roles (id_user, id_role)
+VALUES (
+    (SELECT user_id FROM users WHERE username = 'divo'),
+    (SELECT role_id FROM roles WHERE nama_role = 'petani')
+);
+
+-- Surveyor Zera
+INSERT INTO user_roles (id_user, id_role)
+VALUES (
+    (SELECT user_id FROM users WHERE username = 'zera'),
+    (SELECT role_id FROM roles WHERE nama_role = 'surveyor')
 );
 
 CREATE TABLE IF NOT EXISTS lahan (
@@ -95,7 +106,13 @@ CREATE TABLE IF NOT EXISTS tipe_tanaman(
 CREATE TABLE IF NOT EXISTS tanaman(
     tanaman_id SERIAL PRIMARY KEY,
     id_tipe_tanaman INTEGER REFERENCES tipe_tanaman(tipe_tanaman_id),
-    nama VARCHAR(100) NOT NULL
+    nama VARCHAR(100) NOT NULL,
+    ketinggian float NOT NULL,
+    ph float NOT NULL,
+    kandungan_nutrisi float NOT NULL,
+    kondisi_tanah VARCHAR(50) NOT NULL,
+    iklim_id INTEGER REFERENCES iklim(iklim_id),
+    kelembapan float NOT NULL
 );
 
 INSERT INTO tipe_tanaman(jenis_tanaman) VALUES
@@ -103,27 +120,55 @@ INSERT INTO tipe_tanaman(jenis_tanaman) VALUES
                             ('Agrivultura'),
                             ('Umbi-Umbian');
 
--- Holticlutura (1)
-INSERT INTO tanaman (id_tipe_tanaman, nama) VALUES
-    (1, 'Cabai'),
-    (1, 'Tomat'),
-    (1, 'Kol'),
-    (1, 'Sawi'),
-    (1, 'Selada');
+-- Holtikultura (1)
+INSERT INTO tanaman (
+    id_tipe_tanaman,
+    nama,
+    ketinggian,
+    ph,
+    kandungan_nutrisi,
+    kondisi_tanah,
+    iklim_id,
+    kelembapan
+) VALUES
+    (1, 'Cabai',      400, 6.0, 70, 'Gembur', 1, 65),
+    (1, 'Tomat',      600, 6.5, 75, 'Gembur', 2, 70),
+    (1, 'Kol',       1000, 6.8, 80, 'Lempung', 2, 75),
+    (1, 'Sawi',       500, 6.5, 72, 'Gembur', 2, 70),
+    (1, 'Selada',     900, 6.7, 78, 'Gembur', 2, 80);
 
 -- Agrivultura (2)
-INSERT INTO tanaman (id_tipe_tanaman, nama) VALUES
-    (2, 'Padi'),
-    (2, 'Jagung'),
-    (2, 'Gandum'),
-    (2, 'Kedelai');
+INSERT INTO tanaman (
+    id_tipe_tanaman,
+    nama,
+    ketinggian,
+    ph,
+    kandungan_nutrisi,
+    kondisi_tanah,
+    iklim_id,
+    kelembapan
+) VALUES
+    (2, 'Padi',       100, 5.5, 85, 'Lumpur', 2, 90),
+    (2, 'Jagung',     200, 6.0, 70, 'Lempung', 1, 60),
+    (2, 'Gandum',     500, 6.5, 75, 'Lempung', 1, 55),
+    (2, 'Kedelai',    300, 6.2, 72, 'Gembur', 1, 65);
 
 -- Umbi-Umbian (3)
-INSERT INTO tanaman (id_tipe_tanaman, nama) VALUES
-    (3, 'Kentang'),
-    (3, 'Singkong'),
-    (3, 'Ubi Jalar'),
-    (3, 'Talas');
+INSERT INTO tanaman (
+    id_tipe_tanaman,
+    nama,
+    ketinggian,
+    ph,
+    kandungan_nutrisi,
+    kondisi_tanah,
+    iklim_id,
+    kelembapan
+) VALUES
+    (3, 'Kentang',    900, 5.8, 80, 'Lempung', 2, 75),
+    (3, 'Singkong',   100, 5.5, 60, 'Berpasir', 1, 55),
+    (3, 'Ubi Jalar',  200, 5.6, 65, 'Gembur', 1, 60),
+    (3, 'Talas',      150, 5.4, 70, 'Lumpur', 2, 85);
+
 
 
 CREATE TABLE IF NOT EXISTS survey_data (
