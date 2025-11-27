@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS lahan (
     id_user_surveyor INTEGER REFERENCES users(user_id),
     id_user_petani INTEGER REFERENCES  users(user_id),
     id_alamat INTEGER REFERENCES alamat(alamat_id),
-    ketinggian REAL NOT NULL
+    ketinggian REAL NULL
 );
 
 CREATE TABLE IF NOT EXISTS tipe_tanaman(
@@ -122,7 +122,7 @@ INSERT INTO tipe_tanaman(jenis_tanaman) VALUES
 INSERT INTO tanaman (
     id_tipe_tanaman,
     nama,
-    ketinggian,Sign in to enable AI completions, or disable inline completions in Settings (DBCode > AI).
+    ketinggian,
     ph,
     kandungan_nutrisi,
     kondisi_tanah,
