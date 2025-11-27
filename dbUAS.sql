@@ -60,7 +60,6 @@ CREATE TABLE IF NOT EXISTS kondisi_tanah(
     kelembapan FLOAT NOT NULL
 );
 
--- Insert data default
 INSERT INTO users (name, username, password) VALUES
 ('Admin Ejak', 'ejak', '23'),
 ('Petani Divo', 'divo', '23'),
@@ -120,11 +119,10 @@ INSERT INTO tipe_tanaman(jenis_tanaman) VALUES
                             ('Agrivultura'),
                             ('Umbi-Umbian');
 
--- Holtikultura (1)
 INSERT INTO tanaman (
     id_tipe_tanaman,
     nama,
-    ketinggian,
+    ketinggian,Sign in to enable AI completions, or disable inline completions in Settings (DBCode > AI).
     ph,
     kandungan_nutrisi,
     kondisi_tanah,
@@ -137,7 +135,6 @@ INSERT INTO tanaman (
     (1, 'Sawi',       500, 6.5, 72, 'Gembur', 2, 70),
     (1, 'Selada',     900, 6.7, 78, 'Gembur', 2, 80);
 
--- Agrivultura (2)
 INSERT INTO tanaman (
     id_tipe_tanaman,
     nama,
@@ -153,7 +150,6 @@ INSERT INTO tanaman (
     (2, 'Gandum',     500, 6.5, 75, 'Lempung', 1, 55),
     (2, 'Kedelai',    300, 6.2, 72, 'Gembur', 1, 65);
 
--- Umbi-Umbian (3)
 INSERT INTO tanaman (
     id_tipe_tanaman,
     nama,
@@ -169,12 +165,56 @@ INSERT INTO tanaman (
     (3, 'Ubi Jalar',  200, 5.6, 65, 'Gembur', 1, 60),
     (3, 'Talas',      150, 5.4, 70, 'Lumpur', 2, 85);
 
+INSERT INTO
+    tanaman (
+        id_tipe_tanaman,
+        nama,
+        ketinggian,
+        ph,
+        kandungan_nutrisi,
+        kondisi_tanah,
+        kelembapan,
+        iklim_id
+    )
+VALUES
+    (1, 'Padi Gogo', 500, 6.0, 70, 'Gembur', 60, 1),
+    (1, 'Padi Sawah Irigasi', 100, 7.0, 80, 'Lumpur', 80, 1);
 
+INSERT INTO
+    tanaman (
+        id_tipe_tanaman,
+        nama,
+        ketinggian,
+        ph,
+        kandungan_nutrisi,
+        kondisi_tanah,
+        kelembapan,
+        iklim_id
+    )
+VALUES
+    (2, 'Jagung Manis', 300, 6.5, 75, 'Lumpur', 70, 1),
+    (2, 'Jagung Hibrida', 200, 6.0, 80, 'Lumpur', 65, 1);
+
+INSERT INTO
+    tanaman (
+        id_tipe_tanaman,
+        nama,
+        ketinggian,
+        ph,
+        kandungan_nutrisi,
+        kondisi_tanah,
+        kelembapan,
+        iklim_id
+    )
+VALUES
+    (3, 'Wortel', 1200, 6.0, 80, 'Gembur', 85, 2),
+    (3, 'Kentang', 1500, 5.5, 85, 'Lumpur', 90, 2),
+    (3, 'Kubis', 1000, 6.5, 75, 'Gembur', 80, 2),
+    (3, 'Bayam', 100, 7.0, 60, 'Gembur', 70, 1);
 
 CREATE TABLE IF NOT EXISTS survey_data (
     survey_id SERIAL PRIMARY KEY,
     id_user_surveyor INTEGER REFERENCES users(user_id),
-    id_user_admin INTEGER REFERENCES users(user_id),
     id_lahan INTEGER REFERENCES lahan(lahan_id),
     id_iklim INTEGER REFERENCES iklim(iklim_id),
     id_tanah INTEGER REFERENCES  kondisi_tanah(kondisi_tanah_id),
